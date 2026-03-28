@@ -15,6 +15,7 @@ interface AIInsightSectionProps {
   customPrompt?: string;
   isComparison?: boolean;
   onInsightGenerated?: (insight: string) => void;
+  fallback?: string;
 }
 
 import { renderInsight } from '../renderInsight';
@@ -30,7 +31,8 @@ export default function AIInsightSection({
   inputs,
   customPrompt,
   isComparison = false,
-  onInsightGenerated
+  onInsightGenerated,
+  fallback
 }: AIInsightSectionProps) {
   const [insight, setInsight] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -46,7 +48,91 @@ export default function AIInsightSection({
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  const generateAIInsight = async () => {
+  const validateInsight = (text: string, allowedValues: string[]): boolean => {
+    // Extract all numbers and currency-like patterns
+    // This matches: ₹10.5 L, 10.5, 10, ₹1.2 Cr, 12%, 15 years, etc.
+    const numberRegex = /(?:₹?\s*[\d,]+(?:\.\d+)?\s*(?:L|Cr|lakh|crore|%|years|yr)?)/gi;
+    const foundValues = text.match(numberRegex) || [];
+    
+    if (foundValues.length === 0) return true;
+
+    // Helper to parse values into a common number format for comparison
+    const parseValue = (v: string): number | null => {
+      const clean = v.replace(/[₹%,\s]/g, '').toLowerCase();
+      let multiplier = 1;
+      let valStr = clean;
+
+      if (clean.endsWith('cr') || clean.endsWith('crore')) {
+        multiplier = 10000000;
+        valStr = clean.replace(/cr|crore/g, '');
+      } else if (clean.endsWith('l') || clean.endsWith('lakh')) {
+        multiplier = 100000;
+        valStr = clean.replace(/l|lakh/g, '');
+      } else if (clean.endsWith('yr') || clean.endsWith('years') || clean.endsWith('year')) {
+        valStr = clean.replace(/yr|years|year/g, '');
+      }
+
+      const num = parseFloat(valStr);
+      return isNaN(num) ? null : num * multiplier;
+    };
+
+    // Benchmarks from the prompt that are allowed
+    const benchmarks = [
+      15, 25, 8, 12, 3, 5, 20000, 30000, 
+      1500000, 2500000, 800000, 1200000, 300000, 500000,
+      4 // for "4-year degree"
+    ];
+
+    const parsedAllowed = [
+      ...benchmarks,
+      ...allowedValues.map(v => parseValue(v)).filter((v): v is number => v !== null)
+    ];
+
+    for (const found of foundValues) {
+      const parsedFound = parseValue(found);
+      if (parsedFound === null) continue;
+
+      // Skip very small numbers like 1, 2, 3 which might be part of sentences (e.g., "3 sentences")
+      // But keep them if they have a unit like ₹ or % or L/Cr
+      const isSmallNumber = parsedFound < 10;
+      const hasUnit = /[₹%]|l|cr|yr|year|lakh|crore/i.test(found);
+      
+      if (isSmallNumber && !hasUnit) continue;
+
+      // Check if the found number exists in allowed values (with some tolerance for rounding)
+      const isAllowed = parsedAllowed.some(allowed => {
+        if (allowed === 0) return parsedFound === 0;
+        const diff = Math.abs(parsedFound - allowed);
+        const relDiff = diff / Math.max(Math.abs(parsedFound), Math.abs(allowed));
+        // Allow 1% difference for rounding or small variations
+        return relDiff < 0.01 || diff < 0.1;
+      });
+
+      if (!isAllowed) {
+        console.warn('AI Hallucination Detected:', { found, parsedFound, allowedValues });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const extractAllValues = (obj: any): string[] => {
+    const values: Set<string> = new Set();
+    const recurse = (item: any) => {
+      if (item === null || item === undefined) return;
+      if (Array.isArray(item)) {
+        item.forEach(recurse);
+      } else if (typeof item === 'object') {
+        Object.values(item).forEach(recurse);
+      } else {
+        values.add(String(item));
+      }
+    };
+    recurse(obj);
+    return Array.from(values);
+  };
+
+  const generateAIInsight = async (retryCount = 0) => {
     if (inputs?.isOverInvesting || cooldown > 0) return;
 
     setIsGenerating(true);
@@ -126,19 +212,17 @@ export default function AIInsightSection({
       - Never display raw whole numbers for currency.`;
 
       const basePrompt = (customPrompt || promptMap[category]) + currencyFormattingInstruction;
-      const finalPrompt = `${basePrompt}\n\nIMPORTANT: Return exactly 3 short paragraphs. Each paragraph must be 1–2 complete sentences. Each paragraph must end with proper punctuation. Do not cut sentences midway.`;
+      const systemInstruction = `CRITICAL INSTRUCTION: You are a pure number formatter. You do not calculate anything. You do not derive anything. You do not infer anything. Every single number you write must be copied exactly from the data provided below. If a number is not explicitly in the data, do not use it. Do not round numbers differently than they appear in the data. Do not combine numbers unless the combined value is also explicitly in the data. If you are unsure whether a number came from the data, do not include it.`;
+      const finalPrompt = `${systemInstruction}\n\n${basePrompt}\n\nProvide 3 distinct insights based on the data above.`;
       
-      const errorMsg = "Unable to generate insight at the moment. Please try again.";
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
       try {
+        let text = '';
+        
+        // Always use backend for Groq to keep API key secure
         const response = await fetch(
           `/api/ai/insight`,
           {
             method: 'POST',
-            signal: controller.signal,
             headers: {
               'Content-Type': 'application/json'
             },
@@ -148,40 +232,116 @@ export default function AIInsightSection({
           }
         );
 
-        clearTimeout(timeoutId);
-
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Backend AI Error:', response.status, errorData);
-          const message = errorData.error || errorData.message || `Backend returned ${response.status}`;
-          throw new Error(message);
+          const contentType = response.headers.get('content-type');
+          let errorData: any = {};
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json().catch(() => ({}));
+          } else {
+            const text = await response.text().catch(() => '');
+            console.error('Non-JSON error response:', text);
+            throw new Error("Backend returned an error. Please try again.");
+          }
+          throw new Error(errorData.error || errorData.message || `Backend returned ${response.status}`);
         }
 
         const data = await response.json();
-        const candidate = data.candidates?.[0];
+        text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         
-        if (candidate?.finishReason === 'SAFETY') {
-          const safetyMsg = "I cannot provide an insight for this data due to safety restrictions. Please try adjusting the values.";
-          setInsight(safetyMsg);
-          if (onInsightGenerated) onInsightGenerated(safetyMsg);
-          return;
-        }
-
-        let text = candidate?.content?.parts?.[0]?.text;
-        
-        if (!text || text.trim().length < 30) {
+        if (!text || text.trim().length < 20) {
           throw new Error("No insight generated or too short");
         }
 
-        // Cleanup and validation
-        text = text.trim().replace(/\n{2,}/g, '\n');
-        
-        // If output ends with ":" or incomplete punctuation → discard
-        if (text.endsWith(':') || !/[.!?]$/.test(text)) {
-          throw new Error("Incomplete insight generated");
+        // Cleanup: Strip markdown code blocks if present
+        text = text.trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```[a-z]*\n/i, '').replace(/\n```$/m, '').trim();
         }
 
-        setInsight(text);
+        // Clean up common markdown/formatting before validation
+        text = text
+          .replace(/\*\*/g, '')         // Bold markdown
+          .replace(/\*/g, '')           // Italic markdown
+          .replace(/^[\*\-•–—]\s*/gm, '') // Bullet points at start of lines
+          .replace(/^\d+[\.\)]\s*/gm, ''); // Numbered lists at start of lines
+
+        // Strip common AI intro phrases
+        text = text.replace(/^(Here is an insight|Here is a breakdown|Based on the figures provided|Analyzing your numbers|Here is what your numbers show|Based on the data|The analysis shows):?\s*/i, '');
+
+        // Normalize whitespace and remove invisible characters
+        text = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\n{2,}/g, '\n').trim();
+        
+        // Split by newline and filter out empty lines
+        let paragraphs = text.split(/\r?\n/).filter(p => p.trim().length > 0);
+        
+        // If the AI didn't use newlines, try to split by sentences (aware of currency decimals)
+        if (paragraphs.length < 3 && text.includes('.')) {
+          // Split by punctuation followed by space or newline, but ignore decimals like 1.5
+          const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g);
+          if (sentences && sentences.length >= 3) {
+            // Group sentences into 3 paragraphs if possible
+            paragraphs = [
+              sentences[0].trim(),
+              sentences[1].trim(),
+              sentences.slice(2).join(' ').trim()
+            ];
+          }
+        }
+        
+        // Detailed validation logging
+        const isTooShort = text.trim().length < 20;
+        const endsWithColon = text.endsWith(':');
+        const missingPunctuation = !/[.!?]["')]*$/.test(text);
+        const tooFewParagraphs = paragraphs.length < 1; // Relaxed from 3 to 1
+
+        if (isTooShort || endsWithColon || missingPunctuation || tooFewParagraphs) {
+          console.warn('AI Insight Validation Failed:', {
+            isTooShort,
+            endsWithColon,
+            missingPunctuation,
+            tooFewParagraphs,
+            paragraphCount: paragraphs.length,
+            text: text.substring(0, 100) + '...'
+          });
+          
+          // Retry logic
+          if (retryCount < 3) {
+            console.log(`Retrying insight generation... (Attempt ${retryCount + 1}/3)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return generateAIInsight(retryCount + 1);
+          }
+          
+          throw new Error("The AI generated an incomplete response. Please try again.");
+        }
+
+        // Re-join as newlines for the renderer
+        let finalInsight = paragraphs.slice(0, 3).map(p => p.trim()).join('\n');
+
+        // Final validation for hallucinations
+        if (inputs) {
+          // Include all values from inputs, including percentages and years
+          // Also include secondary values and main value
+          const allowedValues = [
+            ...extractAllValues(inputs),
+            ...secondaryValues.map(sv => String(sv.value)),
+            String(mainValue)
+          ];
+          
+          if (!validateInsight(finalInsight, allowedValues)) {
+            if (fallback) {
+              finalInsight = fallback;
+            } else {
+              // Retry if no fallback provided
+              if (retryCount < 2) {
+                console.log(`Retrying due to hallucination... (Attempt ${retryCount + 1}/2)`);
+                return generateAIInsight(retryCount + 1);
+              }
+              throw new Error("The AI generated inconsistent numbers. Please try again.");
+            }
+          }
+        }
+
+        setInsight(finalInsight);
         setCooldown(30);
         trackEvent('AI Insight Generated', {
           'Category': category,
@@ -190,10 +350,26 @@ export default function AIInsightSection({
         });
         if (onInsightGenerated) onInsightGenerated(text);
       } catch (error: any) {
-        clearTimeout(timeoutId);
         console.error('AI Insight Error:', error);
-        setInsight(errorMsg);
-        if (onInsightGenerated) onInsightGenerated(errorMsg);
+        
+        // Only show error if we're done retrying
+        if (retryCount >= 3 || (error.message !== "The AI generated an incomplete response. Please try again." && error.message !== "Incomplete insight generated")) {
+          const errorMsg = "Unable to generate insight at the moment. Please try again.";
+          let displayError = error.message && error.message.length > 10 && error.message.length < 200
+            ? error.message 
+            : errorMsg;
+            
+          if (error.name === 'AbortError') {
+            displayError = "The request timed out. Please try again.";
+          } else if (error.message === 'Failed to fetch') {
+            displayError = "Connection error. The server might be restarting. Please try again in a few seconds.";
+          } else if (error.message === "The AI generated an incomplete response. Please try again." || error.message === "Incomplete insight generated") {
+            displayError = "The AI generated an incomplete response. Please try again in a moment.";
+          }
+            
+          setInsight(displayError);
+          if (onInsightGenerated) onInsightGenerated(displayError);
+        }
       } finally {
         setIsGenerating(false);
       }
@@ -224,7 +400,7 @@ export default function AIInsightSection({
             </div>
             
             <button
-              onClick={generateAIInsight}
+              onClick={() => generateAIInsight()}
               disabled={isGenerating || cooldown > 0}
               className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg",

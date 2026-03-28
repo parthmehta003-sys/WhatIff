@@ -511,7 +511,7 @@ export default function ShareVision({
         const currentSIP = inputs.monthlyInvestment || inputs.monthlySIP || inputs.requiredSIP || 0;
 
         if (years > 2 && target > 0 && rate > 0) {
-          const r = rate / 12 / 100;
+          const r = Math.pow(1 + rate / 100, 1 / 12) - 1;
           const n = years * 12;
           const denominator = ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
           const calcCurrentSIP = target / denominator;

@@ -44,7 +44,7 @@ export default function TypewriterText({ text1, text2, speed = 40, pause = 400, 
   }, [index1, index2, isFirstDone, isComplete, text1, text2, speed, pause, onComplete]);
 
   return (
-    <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight min-h-[2.5em] md:min-h-[2em]">
+    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight min-h-[2.5em] md:min-h-[2em]">
       <span>{text1.substring(0, index1)}</span>
       {index1 === text1.length && <br />}
       <span className="text-zinc-500">
@@ -67,6 +67,6 @@ export default function TypewriterText({ text1, text2, speed = 40, pause = 400, 
           animation: typewriter-cursor 0.5s step-end infinite;
         }
       `}</style>
-    </h2>
+    </h1>
   );
 }

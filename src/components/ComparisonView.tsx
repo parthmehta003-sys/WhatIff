@@ -9,16 +9,16 @@ import {
   Palmtree, 
   ShieldCheck,
   Info,
-  ChevronLeft,
   Trophy,
   ArrowRight,
   Home,
-  Sparkles
+  Sparkles,
+  ArrowUpRight
 } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../aiInsightPrompt';
 import { motion } from 'motion/react';
 import { storage, SavedScenario } from '../lib/storage';
-import { formatCurrency, cn, formatIndianRupees } from '../lib/utils';
+import { formatCurrency, cn, formatIndianRupees, formatCurrencyForAI } from '../lib/utils';
 import { calculateBuyVsRent } from '../lib/calculators';
 import { 
   PieChart, 
@@ -44,6 +44,7 @@ const typeDisplayNames: Record<string, string> = {
   'retirement': 'Retirement',
   'affordability': 'Loan Affordability',
   'home_purchase': 'Home Purchase',
+  'prepay_vs_invest': 'Prepay vs Invest',
 };
 
 const typeIcons = {
@@ -55,6 +56,7 @@ const typeIcons = {
   home_purchase: Home,
   staggered_fd: TrendingUp,
   buy_vs_rent: Home,
+  prepay_vs_invest: ArrowUpRight,
 };
 
 const typeColors = {
@@ -66,16 +68,27 @@ const typeColors = {
   home_purchase: 'text-blue-400',
   staggered_fd: 'text-emerald-500',
   buy_vs_rent: 'text-emerald-500',
+  prepay_vs_invest: 'text-purple-500',
 };
 
 function buildComparisonPrompt(scenarios: SavedScenario[], type: string, mostAchievableName: string) {
   const scenarioList = scenarios.map((s, i) => {
-    const inputs = Object.entries(s.inputs).map(([k, v]) => `${k}: ${v}`).join(', ');
-    const outputs = Object.entries(s.outputs).map(([k, v]) => `${k}: ${v}`).join(', ');
-    return `Scenario ${i + 1} (${s.name}): Inputs [${inputs}], Outputs [${outputs}]`;
+    const formattedInputs = Object.entries(s.inputs).map(([k, v]) => {
+      if (typeof v === 'number' && v > 1000) return `${k}: ${formatCurrencyForAI(v)}`;
+      if (typeof v === 'number' && k.toLowerCase().includes('rate')) return `${k}: ${v}%`;
+      return `${k}: ${v}`;
+    }).join(', ');
+    
+    const formattedOutputs = Object.entries(s.outputs).map(([k, v]) => {
+      if (typeof v === 'number' && v > 1000) return `${k}: ${formatCurrencyForAI(v)}`;
+      if (typeof v === 'number' && k.toLowerCase().includes('rate')) return `${k}: ${v}%`;
+      return `${k}: ${v}`;
+    }).join(', ');
+    
+    return `Scenario ${i + 1} (${s.name}): Inputs [${formattedInputs}], Outputs [${formattedOutputs}]`;
   }).join('\n');
 
-  const bulletInstructions = "Bullet 1 must compare the primary output of all scenarios (e.g., total corpus or total interest) to show the gap between the best and worst case. Bullet 2 must identify the scenario with the most favorable ratio (e.g., highest real return or lowest interest-to-principal ratio). Bullet 3 must reveal a non-obvious consequence of choosing one scenario over another (e.g., how many extra years of work or months of salary are saved/spent).";
+  const bulletInstructions = "Bullet 1 must compare the primary output of all scenarios (e.g., total corpus or total interest) to show the gap between the best and worst case using verbatim numbers from the data. Bullet 2 must identify the scenario with the most favorable ratio (e.g., highest real return or lowest interest-to-principal ratio). Bullet 3 must reveal a non-obvious consequence of choosing one scenario over another (e.g., how many extra years of work or months of salary are saved/spent).";
 
   return `${GLOBAL_AI_INSTRUCTION}
 
@@ -208,6 +221,19 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
           isBest: (others: SavedScenario[]) => {
             const maxInt = Math.max(...others.map(o => o.outputs.postTaxInterest || 0));
             return s.outputs.postTaxInterest === maxInt;
+          }
+        };
+      case 'prepay_vs_invest':
+        const pviWinner = s.outputs.winner || (s.outputs.investNetWorth > s.outputs.prepayNetWorth ? 'invest' : 'prepay');
+        const pviMargin = s.outputs.winnerMargin || Math.abs((s.outputs.investNetWorth || 0) - (s.outputs.prepayNetWorth || 0));
+        return {
+          key: pviMargin || 0,
+          label: pviMargin > 1000 ? `${pviWinner === 'invest' ? 'Invest' : 'Prepay'} Wins By` : "Calculating...",
+          sec1: { label: 'Prepay NW', value: formatIndianRupees(s.outputs.prepayNetWorth || 0), color: 'red' },
+          sec2: { label: 'Invest NW', value: formatIndianRupees(s.outputs.investNetWorth || 0), color: 'emerald' },
+          isBest: (others: SavedScenario[]) => {
+            const maxMargin = Math.max(...others.map(o => o.outputs.winnerMargin || 0));
+            return s.outputs.winnerMargin === maxMargin;
           }
         };
       case 'buy_vs_rent':
@@ -725,10 +751,10 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
     <div className="space-y-8 pb-20">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-teal-500" />
             Scenario Comparison
-          </h2>
+          </h1>
           <p className="text-zinc-500 text-sm">Side-by-side analysis of your saved financial plans.</p>
         </div>
       </div>

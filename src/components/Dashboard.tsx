@@ -12,8 +12,8 @@ import {
   BarChart3,
   CheckCircle2,
   Home,
-  ChevronLeft,
-  HelpCircle
+  HelpCircle,
+  ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Screen } from '../App';
@@ -88,6 +88,15 @@ const calculators = [
     name: 'Loan Affordability',
     description: 'Check if you can safely afford a new loan.',
     icon: ShieldCheck,
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/10',
+    tag: 'Borrow',
+  },
+  {
+    id: 'prepay_vs_invest' as Screen,
+    name: 'Prepay vs Invest',
+    description: 'Should your extra money close your loan faster or build your wealth?',
+    icon: ArrowUpRight,
     color: 'text-purple-500',
     bg: 'bg-purple-500/10',
     tag: 'Borrow',

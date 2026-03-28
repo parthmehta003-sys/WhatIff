@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   LineChart, 
   Line, 
@@ -13,12 +14,11 @@ import {
 import { Home, Share2, Download, Info, ArrowRight, BarChart3 } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { calculateBuyVsRent, calculateRentInvestCorpus } from '../../lib/calculators';
-import { formatCurrency, formatCompactNumber, cn, formatIndianShort, formatIndianRupees } from '../../lib/utils';
+import { formatCurrency, formatCompactNumber, cn, formatIndianShort, formatIndianRupees, formatCurrencyForAI } from '../../lib/utils';
 import SaveScenarioButton from '../SaveScenarioButton';
 import ShareVision from '../ShareVision';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
+import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import { Screen } from '../../App';
 
@@ -30,9 +30,28 @@ interface BuyVsRentCalculatorProps {
     loanRate?: number;
     tenureYears?: number;
   };
+  onAskAI?: (context?: any) => void;
 }
 
-export default function BuyVsRentCalculator({ onBack, initialData }: BuyVsRentCalculatorProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe} years`;
+  if (type === 'months') return `${safe} months`;
+  return safe.toString();
+};
+
+export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: BuyVsRentCalculatorProps) {
   const [propertyPrice, setPropertyPrice] = useState(initialData?.propertyPrice || 6000000);
   const [downPaymentPercent, setDownPaymentPercent] = useState(initialData?.downPaymentPercent || 20);
   const [loanRate, setLoanRate] = useState(initialData?.loanRate || 8.5);
@@ -45,7 +64,6 @@ export default function BuyVsRentCalculator({ onBack, initialData }: BuyVsRentCa
   const [appreciationRate, setAppreciationRate] = useState(7);
 
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [aiInsight, setAiInsight] = useState<string>('');
   const [chartReady, setChartReady] = useState(false);
 
   useEffect(() => {
@@ -104,36 +122,84 @@ export default function BuyVsRentCalculator({ onBack, initialData }: BuyVsRentCa
 
   const aiData = useMemo(() => {
     return {
-      propertyPrice,
-      downPaymentPercent,
-      loanRate,
-      tenureYears,
-      maintenance,
-      currentRent,
-      rentIncrease,
-      sipReturn,
-      appreciationRate,
-      emi: result.emi,
-      totalMonthlyBuy: result.emi + maintenance + (propertyPrice * 0.0003),
-      monthlyInvestable: result.monthlyInvestable,
-      totalPaidBuy: result.totalPaidBuy,
-      totalRentPaid: result.totalRentPaid,
-      netWorthBuy: result.netWorthBuy,
-      netWorthRent: result.netWorthRent,
-      breakEvenYear: result.breakEvenYear,
-      rentalYield
+      propertyPrice: formatCurrencyForAI(propertyPrice),
+      downPaymentPercent: `${downPaymentPercent}%`,
+      loanRate: `${loanRate}%`,
+      tenureYears: `${tenureYears} years`,
+      maintenance: formatCurrencyForAI(maintenance),
+      currentRent: formatCurrencyForAI(currentRent),
+      rentIncrease: `${rentIncrease}%`,
+      sipReturn: `${sipReturn}%`,
+      appreciationRate: `${appreciationRate}%`,
+      emi: formatCurrencyForAI(result.emi),
+      totalMonthlyBuy: formatCurrencyForAI(result.emi + maintenance + (propertyPrice * 0.0003)),
+      monthlyInvestable: formatCurrencyForAI(result.monthlyInvestable),
+      totalPaidBuy: formatCurrencyForAI(result.totalPaidBuy),
+      totalRentPaid: formatCurrencyForAI(result.totalRentPaid),
+      netWorthBuy: formatCurrencyForAI(result.netWorthBuy),
+      netWorthRent: formatCurrencyForAI(result.netWorthRent),
+      breakEvenYear: result.breakEvenYear ? `Year ${result.breakEvenYear}` : 'Never',
+      rentalYield: `${rentalYield.toFixed(2)}%`
     };
   }, [propertyPrice, downPaymentPercent, loanRate, tenureYears, maintenance, currentRent, rentIncrease, sipReturn, appreciationRate, result, rentalYield]);
 
+  const { insights, chips, systemPrompt } = useMemo(() => {
+    const buyNW = formatInsightValue(result.netWorthBuy);
+    const rentNW = formatInsightValue(result.netWorthRent);
+    const breakEven = result.breakEvenYear ? `${result.breakEvenYear} years` : 'Never';
+    const monthlySavings = formatInsightValue(Math.max(0, result.monthlyInvestable));
+    const sipCorpus = formatInsightValue(result.sipCorpus);
+    const totalBuyCost = formatInsightValue(result.totalPaidBuy);
+    const tenure = formatInsightValue(tenureYears, 'years');
+
+    const insightsList = [
+      `Buying results in a net worth of **${buyNW}**, while renting leads to **${rentNW}**.`,
+      `The break-even point for buying is **${breakEven}**.`,
+      `Renting saves you **${monthlySavings}** per month, which grows to **${sipCorpus}** via SIP.`,
+      `Total cost of ownership for buying is **${totalBuyCost}** over **${tenure}**.`
+    ];
+
+    const chipsList = [
+      `Is buying better than renting for ${tenure}?`,
+      "What if property appreciation is only 5%?",
+      "Explain the break-even point.",
+      "How does the SIP corpus grow in the rent scenario?"
+    ];
+
+    const prompt = `
+      Compare buying vs renting for a property worth **₹${formatInsightValue(propertyPrice)}**.
+      Highlight that buying results in a net worth of **₹${buyNW}** while renting leads to **₹${rentNW}**.
+      Mention the break-even year is **${breakEven}**.
+      Current parameters:
+      - Property Price: ₹${propertyPrice}
+      - Down Payment: ${downPaymentPercent}%
+      - Loan Rate: ${loanRate}%
+      - Tenure: ${tenureYears} years
+      - Current Rent: ₹${currentRent}
+      - Rent Increase: ${rentIncrease}%
+      - SIP Return: ${sipReturn}%
+      - Appreciation Rate: ${appreciationRate}%
+      - Buy Net Worth: ₹${result.netWorthBuy}
+      - Rent Net Worth: ₹${result.netWorthRent}
+    `;
+
+    return { insights: insightsList, chips: chipsList, systemPrompt: prompt };
+  }, [propertyPrice, downPaymentPercent, loanRate, tenureYears, currentRent, rentIncrease, sipReturn, appreciationRate, result]);
+
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>Buy vs Rent Calculator India — Which is Better? | WhatIff</title>
+        <meta name="description" content="Compare the financial impact of buying a home versus renting and investing the difference in India. Find your break-even year and net worth projection." />
+        <link rel="canonical" href="https://whatiff.in/buy-vs-rent" />
+      </Helmet>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-emerald-500" />
             Buy vs Rent Calculator
-          </h2>
+          </h1>
           <p className="text-zinc-500 text-sm">Is buying actually better than renting and investing the difference?</p>
         </div>
         <div className="flex items-center gap-2">
@@ -449,23 +515,13 @@ export default function BuyVsRentCalculator({ onBack, initialData }: BuyVsRentCa
         </div>
       </div>
 
-      <AIInsightSection 
-        title="Buy vs Rent Vision"
-        description={`${winner} is the mathematically superior choice for this property over ${tenureYears} years.`}
-        mainValue={difference}
-        mainLabel="Net Worth Difference"
-        secondaryValues={[
-          { label: 'Rental Yield', value: `${rentalYield.toFixed(2)}%` },
-          { label: 'Break-even', value: result.breakEvenYear ? `Year ${result.breakEvenYear}` : 'Never' },
-          { label: 'Monthly SIP', value: result.monthlyInvestable }
-        ]}
-        category="grow"
-        inputs={aiData}
-        onInsightGenerated={setAiInsight}
-        customPrompt={(() => {
-          const bulletInstructions = "Bullet 1 must state the totalPaidBuy (loan + maintenance + tax) and compare it to the original propertyPrice to show the true cost of ownership. Bullet 2 must state the totalRentPaid over the tenure and compare it to the totalPaidBuy. Bullet 3 must state the breakEvenYear and explain what happens to the net worth gap after that year.";
-          return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-        })()}
+      <WhatiffInsights 
+        calculatorType="buy-vs-rent" 
+        results={result} 
+        onAskAI={onAskAI}
+        insights={insights}
+        chips={chips}
+        systemPrompt={systemPrompt}
       />
 
       <ShareVision 
@@ -481,7 +537,7 @@ export default function BuyVsRentCalculator({ onBack, initialData }: BuyVsRentCa
           { label: 'Break-even', value: result.breakEvenYear ? `Year ${result.breakEvenYear}` : 'Never' },
           { label: 'Rental Yield', value: `${rentalYield.toFixed(2)}%` }
         ]}
-        insight={renderInsight(aiInsight || `At current rental yields your ${formatIndianRupees(propertyPrice)} home would earn ${formatIndianRupees(Math.round((propertyPrice * 0.025) / 12))}/month as rent — your EMI is ${formatIndianRupees(Math.round(result.emi))} so you're paying ${formatIndianRupees(Math.round(result.emi - (propertyPrice * 0.025) / 12))} extra per month for the privilege of ownership.`)}
+        insight={`At current rental yields your ${formatIndianRupees(propertyPrice)} home would earn ${formatIndianRupees(Math.round((propertyPrice * 0.025) / 12))}/month as rent — your EMI is ${formatIndianRupees(Math.round(result.emi))} so you're paying ${formatIndianRupees(Math.round(result.emi - (propertyPrice * 0.025) / 12))} extra per month for the privilege of ownership.`}
         category="buy"
         inputs={{ 
           propertyPrice, 

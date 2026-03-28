@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { motion } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 
 const SIPCalculator = lazy(() => import('./calculators/SIPCalculator'));
 
@@ -168,6 +169,11 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
 
   return (
     <div style={{ background: '#09090b', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
+      <Helmet>
+        <title>WhatIff — Free Financial Calculators for Indian Investors</title>
+        <meta name="description" content="Free financial calculators for SIP, EMI, retirement, home loans & more. Privacy-first, no login required. Built for young Indian investors." />
+        <link rel="canonical" href="https://whatiff.in/" />
+      </Helmet>
       {/* Header */}
       <header style={{
         position: 'fixed',
@@ -351,7 +357,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           }>
-            <SIPCalculator isEmbedded={true} onBack={() => {}} onValuesChange={setSipValues} />
+            <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
           </Suspense>
           
           <button 

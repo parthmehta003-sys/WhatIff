@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   PieChart, 
   Pie, 
@@ -12,7 +13,7 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { ShieldCheck, Info, Share2, AlertCircle, CheckCircle2, AlertTriangle, ChevronLeft, Download } from 'lucide-react';
+import { ShieldCheck, Info, Share2, AlertCircle, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { calculateLoanAffordability } from '../../lib/calculators';
 import { formatCurrency, cn, formatCompactNumber, formatIndianRupees } from '../../lib/utils';
@@ -21,23 +22,38 @@ import ShareVision from '../ShareVision';
 import BrokerSection from '../BrokerSection';
 import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
-
+import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 
 interface LoanAffordabilityProps {
   onBack: () => void;
+  onAskAI?: (context?: any) => void;
 }
 
-export default function LoanAffordability({ onBack }: LoanAffordabilityProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe.toFixed(1)} years`;
+  if (type === 'months') return `${Math.round(safe)} months`;
+  return safe.toString();
+};
+
+export default function LoanAffordability({ onBack, onAskAI }: LoanAffordabilityProps) {
   const [monthlyIncome, setMonthlyIncome] = useState(100000);
   const [existingEMI, setExistingEMI] = useState(0);
   const [interestRate, setInterestRate] = useState(8.5);
   const [tenure, setTenure] = useState(20);
   const [isShareOpen, setIsShareOpen] = useState(false);
-
-  const [aiInsight, setAiInsight] = useState<string>('');
   const [chartReady, setChartReady] = useState(false);
 
   useEffect(() => {
@@ -100,6 +116,37 @@ export default function LoanAffordability({ onBack }: LoanAffordabilityProps) {
     };
   }, [monthlyIncome, existingEMI, interestRate, tenure, result]);
 
+  const { insights, chips, systemPrompt } = useMemo(() => {
+    const loanAmount = result.maxLoan;
+    const emi = result.availableEMI;
+    const totalPayment = emi * tenure * 12;
+    const totalInterest = totalPayment - loanAmount;
+    const emiPercent = ((emi + existingEMI) / monthlyIncome) * 100;
+    const downPayment = loanAmount * 0.2;
+
+    const insightsList = [
+      `Based on your income, you can afford a loan of **${formatInsightValue(loanAmount)}** with an EMI of **${formatInsightValue(emi)}**.`,
+      `Your total repayment will be **${formatInsightValue(totalPayment)}**, with **${formatInsightValue(totalInterest)}** going towards interest.`,
+      `This loan will take up **${formatInsightValue(emiPercent, 'percent')}** of your monthly take-home pay.`,
+      `To increase affordability, consider a longer tenure or a higher down payment of **${formatInsightValue(downPayment)}**.`
+    ].filter(s => !s.includes('₹0') && !s.includes(' 0%'));
+
+    const chipsList = [
+      `How can I increase my loan eligibility?`,
+      `What if my interest rate increases by 1%?`,
+      `Show me the impact of a 5-year longer tenure.`,
+      `Is a ${formatInsightValue(emiPercent, 'percent')} EMI-to-income ratio safe?`
+    ];
+
+    const prompt = `
+      Analyze the loan affordability for a monthly income of **${formatInsightValue(monthlyIncome)}**.
+      Explain that the maximum affordable loan is **${formatInsightValue(loanAmount)}** with an EMI of **${formatInsightValue(emi)}**.
+      Highlight that this EMI is **${formatInsightValue(emiPercent, 'percent')}** of the user's monthly income.
+    `.trim();
+
+    return { insights: insightsList, chips: chipsList, systemPrompt: prompt };
+  }, [monthlyIncome, existingEMI, tenure, result]);
+
   const handleExport = () => {
     exportToExcel(
       "Loan Affordability Analysis",
@@ -136,12 +183,17 @@ export default function LoanAffordability({ onBack }: LoanAffordabilityProps) {
 
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>Loan Affordability Calculator — Check Your Borrowing Power | WhatIff</title>
+        <meta name="description" content="Determine your loan affordability. Calculate maximum loan eligibility, safe EMI, and understand your borrowing capacity." />
+        <link rel="canonical" href="https://whatiff.in/loan-affordability" />
+      </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-purple-500" />
             Loan Affordability
-          </h2>
+          </h1>
           <p className="text-zinc-500 text-sm">Check if you can safely afford a new loan.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -350,24 +402,13 @@ export default function LoanAffordability({ onBack }: LoanAffordabilityProps) {
         </p>
       </div>
 
-      <AIInsightSection 
-        title="Borrowing Power Vision"
-        description={`Based on your income of ${formatIndianRupees(monthlyIncome)}, you can safely afford a loan of up to ${formatIndianRupees(result.maxLoan)}.`}
-        mainValue={result.maxLoan}
-        mainLabel="Max Loan Eligibility"
-        secondaryValues={[
-          { label: 'Safe Monthly EMI', value: result.availableEMI },
-          { label: 'Risk Level', value: result.riskLevel },
-          { label: 'Monthly Income', value: monthlyIncome },
-          { label: 'Existing EMIs', value: existingEMI }
-        ]}
-        category="borrow"
-        inputs={aiData}
-        onInsightGenerated={setAiInsight}
-        customPrompt={(() => {
-          const bulletInstructions = "Bullet 1 must state the interestToPrincipalRatio showing how many rupees of interest are paid for every 1 rupee of principal borrowed. Bullet 2 must state the monthlyInterestCost and compare it to the availableEMI to show how much of the first month's payment is just interest. Bullet 3 must state the totalCostOfAsset (principal + totalInterest) and compare it to the original maxLoan to show the total multiplier effect.";
-          return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-        })()}
+      <WhatiffInsights 
+        calculatorType="loan-affordability" 
+        insights={insights}
+        chips={chips}
+        systemPrompt={systemPrompt}
+        results={result} 
+        onAskAI={onAskAI}
       />
 
       <BrokerSection />
@@ -385,7 +426,7 @@ export default function LoanAffordability({ onBack }: LoanAffordabilityProps) {
           { label: 'Monthly Income', value: monthlyIncome },
           { label: 'Existing EMIs', value: existingEMI }
         ]}
-        insight={renderInsight(aiInsight || (result.riskLevel === 'Safe' ? 'You are well within safe borrowing limits. Lenders will likely approve your application quickly.' : 'Your debt levels are manageable but approach with caution.'))}
+        insight={result.riskLevel === 'Safe' ? 'You are well within safe borrowing limits. Lenders will likely approve your application quickly.' : 'Your debt levels are manageable but approach with caution.'}
         category="borrow"
         inputs={{ monthlyIncome, existingEMI, interestRate, tenure, availableEMI: result.availableEMI, riskLevel: result.riskLevel, income: monthlyIncome }}
         onSave={() => setIsShareOpen(false)}

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useContext } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { 
   BarChart, 
   Bar, 
@@ -21,14 +22,22 @@ import SaveScenarioButton from '../SaveScenarioButton';
 import ShareVision from '../ShareVision';
 import InfoBox from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
-
+import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
+import { ThemeContext } from '../../contexts/ThemeContext';
+import AIChat from '../AIChat';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const MAX_QUESTIONS = 10;
 
 interface StaggeredFDPlannerProps {
   onBack: () => void;
   initialPrincipal?: number;
+  onAskAI?: (context?: any) => void;
 }
 
 const TOP_BANKS = [
@@ -40,7 +49,26 @@ const TOP_BANKS = [
   { name: 'Suryoday SFB', rate: 8.6, rating: 4.2, tags: ["SMALL FINANCE", "HIGHEST RATES"], domain: 'www.suryodaybank.com', url: 'https://suryoday.bank.in/personal/deposits/fixed-deposits/' },
 ];
 
-export default function StaggeredFDPlanner({ onBack, initialPrincipal }: StaggeredFDPlannerProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe} years`;
+  if (type === 'months') return `${safe} months`;
+  return safe.toString();
+};
+
+export default function StaggeredFDPlanner({ onBack, initialPrincipal, onAskAI }: StaggeredFDPlannerProps) {
+  const theme = useContext(ThemeContext);
   const [totalAmount, setTotalAmount] = useState(initialPrincipal || 300000);
   const [numFDs, setNumFDs] = useState(6);
   const [fdRate, setFdRate] = useState(7);
@@ -50,8 +78,26 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
   const [citizenType, setCitizenType] = useState<'Regular' | 'Senior'>('Regular');
   const [taxSlab, setTaxSlab] = useState(20);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [aiInsight, setAiInsight] = useState<string>('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [chartReady, setChartReady] = useState(false);
+
+  // AI Chat State
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showChatChips, setShowChatChips] = useState(true);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
+  const MAX_QUESTIONS = 10;
+
+  // Reset chat on mount
+  useEffect(() => {
+    setMessages([]);
+    setChatInput('');
+    setIsChatLoading(false);
+    setShowChatChips(true);
+    setQuestionCount(0);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setChartReady(true), 50);
@@ -66,8 +112,18 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
 
   const taxDetails = useMemo(() => {
     const threshold = citizenType === 'Senior' ? 50000 : 40000;
-    const totalAnnualInterest = isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest;
-    const tdsDeducted = totalAnnualInterest > threshold ? totalAnnualInterest * 0.1 : 0;
+    const totalInterest = isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest;
+    // For staggered FD, the initial ladder is 12 months. If reinvested, it's roughly 30 months total.
+    const avgTenureMonths = isReinvested ? 25.5 : 7.5; // Average tenure of FDs in the ladder
+    const annualInterest = totalInterest * (12 / (isReinvested ? 25.5 : 7.5)); // This is a bit complex, let's simplify
+    
+    // Actually, the most accurate "annual interest" for a ladder is the interest earned in a 12-month period.
+    // For the initial ladder, it's totalFDInterest (since it's a 12-month strategy).
+    const effectiveAnnualInterest = isReinvested 
+      ? (result.totalInterestWithReinvestment / ( (result.fdData[result.fdData.length-1].tenureMonths + 18) / 12 ))
+      : result.totalFDInterest;
+
+    const tdsDeducted = effectiveAnnualInterest > threshold ? totalInterest * 0.1 : 0;
     const taxRate = taxSlab / 100;
     
     // Post-tax interest for the initial ladder
@@ -101,8 +157,8 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
       postTaxReinvestmentBonus: Math.round(postTaxReinvestmentBonus),
       postTaxRealReturn: Math.round(postTaxRealReturn * 100) / 100,
       postTaxSavingsInterest: Math.round(postTaxSavingsInterest),
-      isTDSApplicable: totalAnnualInterest > threshold,
-      totalAnnualInterest,
+      isTDSApplicable: effectiveAnnualInterest > threshold,
+      annualInterest: effectiveAnnualInterest,
       threshold
     };
   }, [result, citizenType, taxSlab, isReinvested, fdRate]);
@@ -110,6 +166,7 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
   const tdsThreshold = citizenType === 'Senior' ? 50000 : 40000;
   const formattedThreshold = citizenType === 'Senior' ? '₹50,000' : '₹40,000';
   const interestForTDS = isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest;
+  const annualInterestForTDS = taxDetails.annualInterest;
 
   const aiData = useMemo(() => {
     const maxTenure = 12; // Initial ladder is 12 months
@@ -161,15 +218,106 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
 
   const extraEarned = result.extraInterest;
 
+  const { insights, chips, systemPrompt } = useMemo(() => {
+    const totalInterest = isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest;
+    const frequency = formatInsightValue(result.interval, 'months');
+    const avgYield = formatInsightValue(fdRate, 'percent');
+    const monthlyLiquidity = formatInsightValue(result.amountPerFD, 'currency');
+
+    const insightsList = [
+      `By staggering **${formatInsightValue(totalAmount)}** into **${numFDs}** FDs, you ensure liquidity every **${frequency}**.`,
+      `Your total interest earned will be **${formatInsightValue(totalInterest)}**, with an average yield of **${avgYield}**.`,
+      `This ladder strategy provides **${monthlyLiquidity}** in liquidity every **${frequency}** if needed.`,
+      `Compared to a single FD, this reduces reinvestment risk by spreading maturities across **${numFDs}** different dates.`
+    ];
+
+    const chipsList = [
+      "How does the ladder strategy work?",
+      `What if I increase the number of FDs to 12?`,
+      "Show me the monthly liquidity schedule.",
+      `Is the ${avgYield} yield guaranteed?`
+    ];
+
+    const prompt = `
+      Explain the staggered FD ladder strategy for a total investment of **₹${formatInsightValue(totalAmount)}**.
+      Highlight that the strategy uses **${numFDs}** FDs to provide liquidity every **${frequency}**.
+      Explain that the total interest earned is **₹${formatInsightValue(totalInterest)}**.
+      Current parameters:
+      - Total Investment: ₹${totalAmount}
+      - Number of FDs: ${numFDs}
+      - FD Interest Rate: ${fdRate}%
+      - Savings Rate: ${savingsRate}%
+      - Reinvested: ${isReinvested ? 'Yes' : 'No'}
+      - Interval: ${result.interval} months
+      - Total Interest: ₹${totalInterest}
+      - Extra Earned vs Savings: ₹${result.extraInterest}
+    `;
+
+    return { insights: insightsList, chips: chipsList, systemPrompt: prompt };
+  }, [totalAmount, numFDs, fdRate, savingsRate, isReinvested, result]);
+
+  const handleSendMessage = async (content: string) => {
+    if (questionCount >= MAX_QUESTIONS) return;
+
+    const userMessage: Message = { role: 'user', content };
+    setMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsChatLoading(true);
+    setShowChatChips(false);
+    setQuestionCount(prev => prev + 1);
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: content,
+          sessionId,
+          systemPrompt: `${GLOBAL_AI_INSTRUCTION}\n\nContext for this Staggered FD calculation:\n${systemPrompt}`,
+          context: { totalAmount, numFDs, fdRate, savingsRate, isReinvested, citizenType, taxSlab }
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to get AI response');
+      }
+      
+      const assistantMessage: Message = { role: 'assistant', content: data.content };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('AI Chat Error:', error);
+      const errorMessage: Message = { 
+        role: 'assistant', 
+        content: `I'm sorry, I encountered an error: ${error.message}. Please try again.` 
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className={cn(
+      "space-y-8 p-4 md:p-8 min-h-screen transition-colors duration-300",
+      theme === 'dark' ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-900"
+    )}>
+      <Helmet>
+        <title>Staggered FD Planner — Build an FD Ladder for Liquidity | WhatIff</title>
+        <meta name="description" content="Optimize your emergency fund using the staggered FD ladder strategy. Ensure regular liquidity and higher returns compared to a savings account." />
+        <link rel="canonical" href="https://whatiff.in/staggered-fd-calculator" />
+      </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-emerald-500" />
             Staggered FD Planner
-          </h2>
-          <p className="text-zinc-500 text-sm">Optimize your emergency fund for liquidity and returns.</p>
+          </h1>
+          <p className={cn(
+            "text-sm",
+            theme === 'dark' ? "text-zinc-500" : "text-zinc-600"
+          )}>Optimize your emergency fund for liquidity and returns.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -330,11 +478,20 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
         </div>
 
         {/* Results Card */}
-        <div className="glass-card p-8 space-y-8 flex flex-col w-full h-full">
+        <div className={cn(
+          "p-8 space-y-8 flex flex-col w-full h-full transition-all duration-300",
+          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+        )}>
           {isReinvested ? (
-            <div className="p-4 bg-zinc-800/50 border border-zinc-700 border-l-4 border-l-emerald-500 rounded-xl flex gap-3">
+            <div className={cn(
+              "p-4 border border-l-4 border-l-emerald-500 rounded-xl flex gap-3",
+              theme === 'dark' ? "bg-zinc-800/50 border-zinc-700" : "bg-emerald-50 border-emerald-100"
+            )}>
               <TrendingUp className="w-5 h-5 text-emerald-500 shrink-0" />
-              <p className="text-[13px] text-zinc-300 leading-relaxed">
+              <p className={cn(
+                "text-[13px] leading-relaxed",
+                theme === 'dark' ? "text-zinc-300" : "text-zinc-700"
+              )}>
                 {isTaxExpanded && taxSlab > 0 ? (
                   <>After {taxSlab}% tax reinvestment turns {formatCurrency(taxDetails.postTaxTotalInterest)} into {formatCurrency(taxDetails.postTaxTotalInterestWithReinvestment)} — {(taxDetails.postTaxTotalInterestWithReinvestment / taxDetails.postTaxTotalInterest).toFixed(1)}x more.</>
                 ) : (
@@ -343,9 +500,15 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
               </p>
             </div>
           ) : (
-            <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-xl flex gap-3">
+            <div className={cn(
+              "p-4 border rounded-xl flex gap-3",
+              theme === 'dark' ? "bg-zinc-800/50 border-zinc-700" : "bg-zinc-50 border-zinc-200"
+            )}>
               <Info className="w-5 h-5 text-zinc-400 shrink-0" />
-              <p className="text-[13px] text-zinc-400 leading-relaxed">
+              <p className={cn(
+                "text-[13px] leading-relaxed",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-600"
+              )}>
                 Toggle reinvestment ON to see how much more your emergency fund can earn when matured FDs are automatically rolled over.
               </p>
             </div>
@@ -353,11 +516,20 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Amount per FD</p>
-              <p className="text-xl font-bold text-white">{formatCurrency(result.amountPerFD)}</p>
+              <p className={cn(
+                "text-xs uppercase tracking-wider font-semibold",
+                theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+              )}>Amount per FD</p>
+              <p className={cn(
+                "text-xl font-bold",
+                theme === 'dark' ? "text-white" : "text-zinc-900"
+              )}>{formatCurrency(result.amountPerFD)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">{isReinvested ? "TOTAL INTEREST (WITH REINVESTMENT)" : "TOTAL FD INTEREST"}</p>
+              <p className={cn(
+                "text-xs uppercase tracking-wider font-semibold",
+                theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+              )}>{isReinvested ? "TOTAL INTEREST (WITH REINVESTMENT)" : "TOTAL FD INTEREST"}</p>
               <div className="flex flex-wrap items-baseline gap-2">
                 <p className={cn("font-bold", isTaxExpanded ? "text-sm text-zinc-500 line-through" : "text-xl text-emerald-400")}>
                   {formatCurrency(isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest)}
@@ -372,9 +544,15 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
           </div>
 
           {isReinvested && (
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5">
+            <div className={cn(
+              "grid grid-cols-2 gap-4 pt-6 border-t",
+              theme === 'dark' ? "border-white/5" : "border-zinc-100"
+            )}>
               <div className="space-y-1">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Reinvestment Bonus</p>
+                <p className={cn(
+                  "text-xs uppercase tracking-wider font-semibold",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>Reinvestment Bonus</p>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <p className={cn("font-bold", isTaxExpanded ? "text-sm text-zinc-500 line-through" : "text-xl text-emerald-400")}>
                     +{formatCurrency(result.reinvestmentBonus)}
@@ -387,8 +565,14 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
             </div>
           )}
 
-          <div className="pt-6 border-t border-white/5 space-y-1">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Extra earned vs savings account</p>
+          <div className={cn(
+            "pt-6 border-t space-y-1",
+            theme === 'dark' ? "border-white/5" : "border-zinc-100"
+          )}>
+            <p className={cn(
+              "text-xs uppercase tracking-wider font-semibold mb-1",
+              theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+            )}>Extra earned vs savings account</p>
             <div className="flex flex-wrap items-baseline gap-3">
               <p className={cn(
                 "font-bold",
@@ -406,9 +590,15 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
               )}
             </div>
             {extraEarned === 0 && !isReinvested && (
-              <p className="text-[11px] text-zinc-400">Your FD rate equals your savings rate — no extra benefit from going staggered.</p>
+              <p className={cn(
+                "text-[11px]",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>Your FD rate equals your savings rate — no extra benefit from going staggered.</p>
             )}
-            <p className="text-[11px] text-zinc-400">Extra earned by choosing FD over savings account for the same amount and tenure.</p>
+            <p className={cn(
+              "text-[11px]",
+              theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+            )}>Extra earned by choosing FD over savings account for the same amount and tenure.</p>
           </div>
 
           {isTaxExpanded && (
@@ -435,16 +625,25 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
       </div>
 
       {/* FD Table */}
-      <div className="glass-card overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">FD Ladder Breakdown</h3>
+      <div className={cn(
+        "overflow-hidden transition-all duration-300",
+        theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+      )}>
+        <div className={cn(
+          "p-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4",
+          theme === 'dark' ? "border-white/5" : "border-zinc-100"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>FD Ladder Breakdown</h3>
           
           <div className="flex-1 md:max-w-md">
-            {interestForTDS > tdsThreshold ? (
+            {taxDetails.isTDSApplicable ? (
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-2 items-start">
                 <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-200/80 leading-relaxed">
-                  Your total interest of {formatCurrency(interestForTDS)} exceeds the {formattedThreshold} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — your bank will deduct TDS at 10%.
+                  Your annualized interest of {formatCurrency(annualInterestForTDS)} exceeds the {formattedThreshold} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — your bank will deduct TDS at 10%.
                   {isTaxExpanded && taxSlab > 0 && (
                     <> TDS is deducted on gross interest before your income tax calculation. Your post-tax interest after your {taxSlab}% slab is {formatCurrency(isReinvested ? taxDetails.postTaxTotalInterestWithReinvestment : taxDetails.postTaxTotalInterest)}.</>
                   )}
@@ -454,7 +653,7 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
               <div className="flex items-center gap-2 text-emerald-500">
                 <ShieldCheck className="w-4 h-4" />
                 <p className="text-[11px] font-medium">
-                  Your total interest of {formatCurrency(interestForTDS)} is below the {formattedThreshold} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — no TDS will be deducted by your bank.
+                  Your annualized interest of {formatCurrency(annualInterestForTDS)} is below the {formattedThreshold} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — no TDS will be deducted by your bank.
                 </p>
               </div>
             )}
@@ -463,27 +662,64 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-zinc-900/50">
-                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">FD #</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Amount</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tenure (Months)</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Maturity Value</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Interest Earned</th>
+              <tr className={theme === 'dark' ? "bg-zinc-900/50" : "bg-zinc-50"}>
+                <th className={cn(
+                  "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>FD #</th>
+                <th className={cn(
+                  "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>Amount</th>
+                <th className={cn(
+                  "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>Tenure (Months)</th>
+                <th className={cn(
+                  "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>Maturity Value</th>
+                <th className={cn(
+                  "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                )}>Interest Earned</th>
                 {isTaxExpanded && (
                   <>
-                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Income Tax</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Post-Tax Interest</th>
+                    <th className={cn(
+                      "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>Income Tax</th>
+                    <th className={cn(
+                      "px-6 py-4 text-[10px] font-bold uppercase tracking-widest",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>Post-Tax Interest</th>
                   </>
                 )}
               </tr>
             </thead>
             <tbody>
               {result.fdData.map((fd, index) => (
-                <tr key={fd.id} className={cn(index % 2 === 0 ? "bg-zinc-900" : "bg-zinc-800")}>
-                  <td className="px-6 py-4 text-sm font-medium text-white">{fd.id}</td>
-                  <td className="px-6 py-4 text-sm text-zinc-300">{formatCurrency(fd.amount)}</td>
-                  <td className="px-6 py-4 text-sm text-zinc-300">{fd.tenureMonths}</td>
-                  <td className="px-6 py-4 text-sm text-white font-semibold">{formatCurrency(fd.maturityValue)}</td>
+                <tr key={fd.id} className={cn(
+                  index % 2 === 0 
+                    ? (theme === 'dark' ? "bg-zinc-900" : "bg-white") 
+                    : (theme === 'dark' ? "bg-zinc-800" : "bg-zinc-50/50")
+                )}>
+                  <td className={cn(
+                    "px-6 py-4 text-sm font-medium",
+                    theme === 'dark' ? "text-white" : "text-zinc-900"
+                  )}>{fd.id}</td>
+                  <td className={cn(
+                    "px-6 py-4 text-sm",
+                    theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
+                  )}>{formatCurrency(fd.amount)}</td>
+                  <td className={cn(
+                    "px-6 py-4 text-sm",
+                    theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
+                  )}>{fd.tenureMonths}</td>
+                  <td className={cn(
+                    "px-6 py-4 text-sm font-semibold",
+                    theme === 'dark' ? "text-white" : "text-zinc-900"
+                  )}>{formatCurrency(fd.maturityValue)}</td>
                   <td className="px-6 py-4 text-sm text-emerald-400 font-medium">{formatCurrency(fd.interestEarned)}</td>
                   {isTaxExpanded && (
                     <>
@@ -493,8 +729,14 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                   )}
                 </tr>
               ))}
-              <tr className="bg-zinc-800/80 border-t-2 border-white/10">
-                <td className="px-6 py-4 text-xs font-bold text-white uppercase tracking-widest">TOTAL</td>
+              <tr className={cn(
+                "border-t-2",
+                theme === 'dark' ? "bg-zinc-800/80 border-white/10" : "bg-zinc-50 border-zinc-200"
+              )}>
+                <td className={cn(
+                  "px-6 py-4 text-xs font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-white" : "text-zinc-900"
+                )}>TOTAL</td>
                 <td className="px-6 py-4"></td>
                 <td className="px-6 py-4"></td>
                 <td className="px-6 py-4"></td>
@@ -514,23 +756,29 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Bar Chart */}
-        <div className="p-6 min-w-0 border border-white/10 rounded-2xl">
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">FD Maturity Values</h3>
+        <div className={cn(
+          "p-6 min-w-0 border rounded-2xl transition-all duration-300",
+          theme === 'dark' ? "border-white/10" : "bg-white border-zinc-200 shadow-sm"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold mb-6 uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>FD Maturity Values</h3>
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={result.fdData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="id" 
-                    stroke="#52525b" 
+                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
                     fontSize={12} 
                     tickLine={false} 
                     axisLine={false}
-                    label={{ value: 'FD Number', position: 'insideBottom', offset: -5, fill: '#52525b', fontSize: 10 }}
+                    label={{ value: 'FD Number', position: 'insideBottom', offset: -5, fill: theme === 'dark' ? '#52525b' : '#71717a', fontSize: 10 }}
                   />
                   <YAxis 
-                    stroke="#52525b" 
+                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
@@ -538,7 +786,13 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                   />
                   <Tooltip 
                     cursor={false}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
+                    contentStyle={{ 
+                      backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                      border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px',
+                      color: theme === 'dark' ? '#fff' : '#18181b'
+                    }}
+                    itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
                     formatter={(value: number) => [formatCurrency(value), 'Maturity Value']}
                     labelFormatter={(label) => `FD #${label}`}
                   />
@@ -554,8 +808,14 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
         </div>
 
         {/* Donut Chart */}
-        <div className="p-6 min-w-0 border border-white/10 rounded-2xl">
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">Interest Earned</h3>
+        <div className={cn(
+          "p-6 min-w-0 border rounded-2xl transition-all duration-300",
+          theme === 'dark' ? "border-white/10" : "bg-white border-zinc-200 shadow-sm"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold mb-6 uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>Interest Earned</h3>
           <div className="h-[300px] w-full relative flex items-center justify-center" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
               <ResponsiveContainer width="100%" height="100%">
@@ -573,12 +833,17 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                     dataKey="value"
                     stroke="none"
                   >
-                    <Cell fill="#52525b" />
+                    <Cell fill={theme === 'dark' ? "#52525b" : "#e4e4e7"} />
                     <Cell fill="#10b981" />
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                      border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px',
+                      color: theme === 'dark' ? '#fff' : '#18181b'
+                    }}
+                    itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                   />
                 </PieChart>
@@ -588,24 +853,39 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
               <p className="text-2xl md:text-3xl font-bold text-emerald-400">
                 {formatCurrency(isReinvested ? result.totalInterestWithReinvestment : result.totalFDInterest)}
               </p>
-              <p className="text-[11px] text-zinc-400 uppercase font-bold tracking-widest">of corpus</p>
+              <p className={cn(
+                "text-[11px] uppercase font-bold tracking-widest",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>of corpus</p>
             </div>
           </div>
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-zinc-600" />
-              <span className="text-xs text-zinc-400">Principal</span>
+              <div className={cn("w-3 h-3 rounded-full", theme === 'dark' ? "bg-zinc-600" : "bg-zinc-200")} />
+              <span className={cn(
+                "text-xs",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>Principal</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-zinc-400">Interest</span>
+              <span className={cn(
+                "text-xs",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>Interest</span>
             </div>
           </div>
         </div>
 
         {/* Comparison Bar Chart */}
-        <div className="p-6 min-w-0 border border-white/10 rounded-2xl">
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">
+        <div className={cn(
+          "p-6 min-w-0 border rounded-2xl transition-all duration-300",
+          theme === 'dark' ? "border-white/10" : "bg-white border-zinc-200 shadow-sm"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold mb-6 uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>
             {isTaxExpanded && taxSlab > 0 ? "FD VS SAVINGS (POST-TAX)" : "FD VS SAVINGS"}
           </h3>
           <div className="h-[300px] w-full relative" style={{ minWidth: 0, minHeight: 300 }}>
@@ -616,29 +896,29 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                     const factor = (isTaxExpanded && taxSlab > 0) ? (1 - taxSlab / 100) : 1;
                     if (isReinvested) {
                       return [
-                        { name: 'FD Basic', value: Math.round(result.totalFDInterest * factor), fill: '#52525b' },
+                        { name: 'FD Basic', value: Math.round(result.totalFDInterest * factor), fill: theme === 'dark' ? '#52525b' : '#e4e4e7' },
                         { name: 'FD Reinvest', value: Math.round(result.totalInterestWithReinvestment * factor), fill: '#10b981' },
-                        { name: 'Savings', value: Math.round((result.totalInterestWithReinvestment - result.extraInterest) * factor), fill: '#3f3f46' }
+                        { name: 'Savings', value: Math.round((result.totalInterestWithReinvestment - result.extraInterest) * factor), fill: theme === 'dark' ? '#3f3f46' : '#d4d4d8' }
                       ];
                     } else {
                       return [
                         { name: 'Staggered FD', value: Math.round(result.totalFDInterest * factor), fill: '#10b981' },
-                        { name: 'Savings A/c', value: Math.round((result.totalFDInterest - result.extraInterest) * factor), fill: '#52525b' }
+                        { name: 'Savings A/c', value: Math.round((result.totalFDInterest - result.extraInterest) * factor), fill: theme === 'dark' ? '#52525b' : '#e4e4e7' }
                       ];
                     }
                   })()}
                   margin={{ top: 20, right: 30, left: 0, bottom: 40 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="name" 
-                    stroke="#52525b" 
+                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
                   />
                   <YAxis 
-                    stroke="#52525b" 
+                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
@@ -646,8 +926,13 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                   />
                   <Tooltip 
                     cursor={false}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                      border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px',
+                      color: theme === 'dark' ? '#fff' : '#18181b'
+                    }}
+                    itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
                     formatter={(value: number) => [formatCurrency(value), 'Interest']}
                   />
                   <Bar 
@@ -658,12 +943,12 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
                     {(() => {
                       const factor = (isTaxExpanded && taxSlab > 0) ? (1 - taxSlab / 100) : 1;
                       const data = isReinvested ? [
-                        { name: 'FD Basic', value: Math.round(result.totalFDInterest * factor), fill: '#52525b' },
+                        { name: 'FD Basic', value: Math.round(result.totalFDInterest * factor), fill: theme === 'dark' ? '#52525b' : '#e4e4e7' },
                         { name: 'FD Reinvest', value: Math.round(result.totalInterestWithReinvestment * factor), fill: '#10b981' },
-                        { name: 'Savings', value: Math.round((result.totalInterestWithReinvestment - result.extraInterest) * factor), fill: '#3f3f46' }
+                        { name: 'Savings', value: Math.round((result.totalInterestWithReinvestment - result.extraInterest) * factor), fill: theme === 'dark' ? '#3f3f46' : '#d4d4d8' }
                       ] : [
                         { name: 'Staggered FD', value: Math.round(result.totalFDInterest * factor), fill: '#10b981' },
-                        { name: 'Savings A/c', value: Math.round((result.totalFDInterest - result.extraInterest) * factor), fill: '#52525b' }
+                        { name: 'Savings A/c', value: Math.round((result.totalFDInterest - result.extraInterest) * factor), fill: theme === 'dark' ? '#52525b' : '#e4e4e7' }
                       ];
                       return data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -682,35 +967,47 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
         </div>
       </div>
 
-      <AIInsightSection 
-        title="Staggered FD Vision"
-        description={`Your emergency fund of ${formatCurrency(totalAmount)} split into ${numFDs} FDs could earn ${formatCurrency(extraEarned)} extra.`}
-        mainValue={extraEarned}
-        mainLabel="Extra Earned"
-        secondaryValues={[
-          { label: 'Total Fund', value: totalAmount },
-          { label: 'Interval', value: `${result.interval} Months` },
-          { label: 'Real Return Rate', value: `${taxDetails.postTaxRealReturn}%` }
-        ]}
-        category="grow"
-        inputs={aiData}
-        onInsightGenerated={setAiInsight}
-        customPrompt={(() => {
-          const bulletInstructions = `Bullet 1 must state the inflationAdjustedPrincipal and compare it to the totalAmount to show how much is needed just to maintain purchasing power at ${INFLATION_RATE}% inflation. Bullet 2 must state the realSurplus (totalMaturity - inflationAdjustedPrincipal) to show the true wealth gain after inflation. Bullet 3 must state the realReturnRate and compare it to the nominal fdRate to show the impact of taxes and inflation combined.`;
-          return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-        })()}
+      <WhatiffInsights 
+        calculatorType="staggered-fd" 
+        results={result} 
+        onAskAI={onAskAI}
+        insights={insights}
+        chips={chips}
+        systemPrompt={systemPrompt}
+      />
+
+      <AIChat 
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        messages={messages}
+        input={chatInput}
+        setInput={setChatInput}
+        onSend={handleSendMessage}
+        isLoading={isChatLoading}
+        showChips={showChatChips}
+        chips={chips}
+        questionCount={questionCount}
+        maxQuestions={MAX_QUESTIONS}
       />
 
       {/* Top Banks Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Top Banks</h3>
+          <h3 className={cn(
+            "text-sm font-bold uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>Top Banks</h3>
         </div>
         <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
           {TOP_BANKS.map((bank) => (
             <div 
               key={bank.name} 
-              className="flex-shrink-0 w-[160px] glass-card p-4 space-y-4 border border-zinc-700 bg-zinc-800 rounded-[12px] hover:shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all group relative"
+              className={cn(
+                "flex-shrink-0 w-[160px] p-4 space-y-4 border rounded-[12px] transition-all group relative",
+                theme === 'dark' 
+                  ? "bg-zinc-800 border-zinc-700 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
+                  : "bg-white border-zinc-200 hover:shadow-md"
+              )}
             >
               <div className="flex items-start justify-between">
                 <div className="w-12 h-12 rounded-lg bg-white p-1.5 flex items-center justify-center overflow-hidden">
@@ -731,13 +1028,22 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
               </div>
               
               <div className="space-y-1">
-                <h4 className="font-bold text-white text-sm truncate">{bank.name}</h4>
-                <p className="text-xs text-zinc-400">Up to <span className="text-white font-bold">{bank.rate}%</span></p>
+                <h4 className={cn(
+                  "font-bold text-sm truncate",
+                  theme === 'dark' ? "text-white" : "text-zinc-900"
+                )}>{bank.name}</h4>
+                <p className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-600"
+                )}>Up to <span className={cn("font-bold", theme === 'dark' ? "text-white" : "text-zinc-900")}>{bank.rate}%</span></p>
               </div>
               
               <div className="flex flex-wrap gap-1">
                 {bank.tags.map(tag => (
-                  <span key={tag} className="text-[9px] font-bold text-zinc-400 bg-zinc-700 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                  <span key={tag} className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider",
+                    theme === 'dark' ? "text-zinc-400 bg-zinc-700" : "text-zinc-500 bg-zinc-100"
+                  )}>
                     {tag}
                   </span>
                 ))}
@@ -784,13 +1090,13 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal }: Stagger
           }
           return stats;
         })()}
-        insight={renderInsight(aiInsight || (isTaxExpanded && taxSlab > 0
+        insight={isTaxExpanded && taxSlab > 0
           ? `After ${taxSlab}% tax your staggered FD earns ₹${formatCurrency(isReinvested ? taxDetails.postTaxTotalInterestWithReinvestment : taxDetails.postTaxTotalInterest)} — a post-tax real return of ${taxDetails.postTaxRealReturn}% after ${INFLATION_RATE}% inflation. Keeping the same amount in a savings account would earn ₹${formatCurrency(taxDetails.postTaxSavingsInterest)} after tax — the staggered strategy puts ₹${formatCurrency(taxDetails.postTaxExtraEarned)} more in your pocket for zero additional risk.`
           : (isReinvested 
             ? `Reinvesting each matured FD earns you ${formatCurrency(result.reinvestmentBonus)} extra over the cycle — your emergency fund is now actively compounding while staying liquid every ${result.interval} months.`
             : `Keeping ${formatCurrency(totalAmount)} in a savings account for the same tenure earns ${formatCurrency(result.totalFDInterest - result.extraInterest)}. Your staggered FD strategy earns ${formatCurrency(result.totalFDInterest)} — that's ${formatCurrency(result.extraInterest)} more for doing nothing differently except where you park it.`
           )
-        ))}
+        }
         category="grow"
         inputs={{ 
           totalAmount, 

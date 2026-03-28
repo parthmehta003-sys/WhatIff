@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useContext } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { TrendingUp, Share2, Download, ChevronDown, ArrowRight, Star, Info, ShieldCheck } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { motion, AnimatePresence } from 'motion/react';
@@ -23,14 +24,23 @@ import SaveScenarioButton from '../SaveScenarioButton';
 import ShareVision from '../ShareVision';
 import InfoBox from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
+import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import { Screen } from '../../App';
+import { ThemeContext } from '../../contexts/ThemeContext';
+import AIChat from '../AIChat';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const MAX_QUESTIONS = 10;
 
 interface BasicFDCalculatorProps {
   onBack: () => void;
   onNavigate: (screen: Screen, state?: any) => void;
+  onAskAI?: (context?: any) => void;
 }
 
 const TOP_BANKS = [
@@ -42,7 +52,26 @@ const TOP_BANKS = [
   { name: 'Suryoday SFB', rate: 8.6, rating: 4.2, tags: ["SMALL FINANCE", "HIGHEST RATES"], domain: 'www.suryodaybank.com', url: 'https://suryoday.bank.in/personal/deposits/fixed-deposits/' },
 ];
 
-export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalculatorProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe.toFixed(1)} years`;
+  if (type === 'months') return `${Math.round(safe)} months`;
+  return safe.toString();
+};
+
+export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: BasicFDCalculatorProps) {
+  const theme = useContext(ThemeContext);
   const [principal, setPrincipal] = useState(100000);
   const [fdRate, setFdRate] = useState(6.5);
   const [tenure, setTenure] = useState(12);
@@ -50,9 +79,27 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
   const [citizenType, setCitizenType] = useState<'Regular' | 'Senior'>('Regular');
   const [taxSlab, setTaxSlab] = useState(20);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [aiInsight, setAiInsight] = useState<string>('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [barPositions, setBarPositions] = useState<{ x: number; width: number; label: string; index: number }[]>([]);
   const sliderRef = useRef<HTMLDivElement>(null);
+
+  // AI Chat State
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showChatChips, setShowChatChips] = useState(true);
+  const [questionCount, setQuestionCount] = useState(0);
+
+  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
+
+  // Reset chat on mount
+  useEffect(() => {
+    setMessages([]);
+    setChatInput('');
+    setIsChatLoading(false);
+    setShowChatChips(true);
+    setQuestionCount(0);
+  }, []);
 
   const barLabels = {
     principal: "Principal",
@@ -282,16 +329,100 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
     };
   }, [principal, tenure, result.maturityAmount, result.grossInterest, taxDetails.postTaxInterest]);
 
+  const { insights, chips, systemPrompt } = useMemo(() => {
+    const tenureYears = tenure / 12;
+    const maturityValue = result.maturityAmount;
+    const realMaturityValue = maturityValue / Math.pow(1 + INFLATION_RATE / 100, tenureYears);
+    const purchasingPowerLost = maturityValue - realMaturityValue;
+    const realWealthCreated = realMaturityValue - principal;
+    const inflationErosionPercent = (purchasingPowerLost / maturityValue) * 100;
+
+    const insightsList = [
+      `Your investment of **${formatInsightValue(principal)}** will grow to **${formatInsightValue(maturityValue)}** in **${formatInsightValue(tenureYears, 'years')}**.`,
+      `Inflation will erode **${formatInsightValue(purchasingPowerLost)}** of your value, leaving you with **${formatInsightValue(realMaturityValue)}** in today's terms.`,
+      `Your real wealth (gain above inflation) is **${formatInsightValue(realWealthCreated)}**, after accounting for price rises.`,
+      `Inflation will eat up **${formatInsightValue(inflationErosionPercent, 'percent')}** of your total maturity value over **${formatInsightValue(tenureYears, 'years')}**.`
+    ].filter(s => !s.includes('₹0') && !s.includes(' 0%'));
+
+    const chipsList = [
+      `How does 6% inflation affect my ${formatInsightValue(maturityValue)}?`,
+      `What if I reinvest the interest instead?`,
+      `How much will my ${formatInsightValue(principal)} be worth in today's money?`,
+      `Explain the gap between ${formatInsightValue(maturityValue)} and ${formatInsightValue(realMaturityValue)}.`
+    ];
+
+    const prompt = `
+      Explain how an FD of **${formatInsightValue(principal)}** grows to **${formatInsightValue(maturityValue)}** over **${formatInsightValue(tenureYears, 'years')}** at **${fdRate}%**.
+      Highlight that while the nominal value is **${formatInsightValue(maturityValue)}**, its actual purchasing power in today's terms is **${formatInsightValue(realMaturityValue)}** due to inflation.
+      Explain that inflation erodes **${formatInsightValue(purchasingPowerLost)}** (about **${formatInsightValue(inflationErosionPercent, 'percent')}**) of the wealth.
+    `.trim();
+
+    return { insights: insightsList, chips: chipsList, systemPrompt: prompt };
+  }, [principal, fdRate, tenure, result]);
+
+  const handleSendMessage = async (content: string) => {
+    if (questionCount >= MAX_QUESTIONS) return;
+
+    const userMessage: Message = { role: 'user', content };
+    setMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsChatLoading(true);
+    setShowChatChips(false);
+    setQuestionCount(prev => prev + 1);
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: content,
+          sessionId,
+          systemPrompt: `${GLOBAL_AI_INSTRUCTION}\n\nContext for this Basic FD calculation:\n${systemPrompt}`,
+          context: { principal, fdRate, tenure, citizenType, taxSlab }
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to get AI response');
+      }
+      
+      const assistantMessage: Message = { role: 'assistant', content: data.content };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('AI Chat Error:', error);
+      const errorMessage: Message = { 
+        role: 'assistant', 
+        content: `I'm sorry, I encountered an error: ${error.message}. Please try again.` 
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className={cn(
+      "space-y-8 p-4 md:p-8 min-h-screen transition-colors duration-300",
+      theme === 'dark' ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-900"
+    )}>
+      <Helmet>
+        <title>FD Calculator — Fixed Deposit Returns Calculator | WhatIff</title>
+        <meta name="description" content="Calculate maturity amount and interest earned on your fixed deposit." />
+        <link rel="canonical" href="https://whatiff.in/fd-calculator" />
+      </Helmet>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-emerald-500" />
             Basic FD Calculator
-          </h2>
-          <p className="text-zinc-500 text-sm">Calculate your fixed deposit returns and tax impact.</p>
+          </h1>
+          <p className={cn(
+            "text-sm",
+            theme === 'dark' ? "text-zinc-500" : "text-zinc-600"
+          )}>Calculate your fixed deposit returns and tax impact.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -430,14 +561,17 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
         </div>
 
         {/* Results Card */}
-        <div className="glass-card p-8 space-y-8 flex flex-col w-full h-full">
+        <div className={cn(
+          "p-8 space-y-8 flex flex-col w-full h-full transition-all duration-300",
+          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+        )}>
           {/* TDS Warning Box */}
           <div>
             {taxDetails.isTDSApplicable ? (
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-2 items-start">
                 <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-200/80 leading-relaxed">
-                  Your total interest of {formatCurrency(result.grossInterest)} exceeds the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — your bank will deduct TDS at 10%.
+                  Your annualized interest of {formatCurrency(taxDetails.annualInterest)} exceeds the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — your bank will deduct TDS at 10%.
                   {isTaxExpanded && taxSlab > 0 && (
                     <> TDS is deducted on gross interest before your income tax calculation. Your post-tax interest after your {taxSlab}% slab is {formatCurrency(taxDetails.postTaxInterest)}.</>
                   )}
@@ -447,7 +581,7 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex gap-2 items-start">
                 <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-emerald-200/80 leading-relaxed">
-                  Your total interest of {formatCurrency(result.grossInterest)} is below the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — no TDS will be deducted by your bank.
+                  Your annualized interest of {formatCurrency(taxDetails.annualInterest)} is below the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — no TDS will be deducted by your bank.
                 </p>
               </div>
             )}
@@ -455,21 +589,45 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Gross Interest</p>
-              <p className="text-xl font-bold text-white">{formatCurrency(result.grossInterest)}</p>
+              <p className={cn(
+                "text-xs uppercase tracking-wider font-semibold",
+                theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+              )}>Gross Interest</p>
+              <p className={cn(
+                "text-xl font-bold",
+                theme === 'dark' ? "text-white" : "text-zinc-900"
+              )}>{formatCurrency(result.grossInterest)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Real Return</p>
-              <p className="text-xl font-bold text-white">{result.realReturn}%</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className={cn(
+                "text-xs uppercase tracking-wider font-semibold",
+                theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+              )}>Real Return</p>
+              <p className={cn(
+                "text-xl font-bold",
+                theme === 'dark' ? "text-white" : "text-zinc-900"
+              )}>{result.realReturn}%</p>
+              <p className={cn(
+                "text-[10px]",
+                theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+              )}>
                 In today's money your {formatIndianRupees(result.maturityAmount)} will be worth {formatIndianRupees(realMaturityValue)}
               </p>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-white/5">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Maturity Amount</p>
-            <p className="text-4xl font-bold text-white">{formatCurrency(result.maturityAmount)}</p>
+          <div className={cn(
+            "pt-6 border-t",
+            theme === 'dark' ? "border-white/5" : "border-zinc-100"
+          )}>
+            <p className={cn(
+              "text-xs uppercase tracking-wider font-semibold mb-1",
+              theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+            )}>Maturity Amount</p>
+            <p className={cn(
+              "text-4xl font-bold",
+              theme === 'dark' ? "text-white" : "text-zinc-900"
+            )}>{formatCurrency(result.maturityAmount)}</p>
           </div>
 
           <AnimatePresence>
@@ -477,38 +635,62 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="pt-6 border-t border-white/5 space-y-4"
+                className={cn(
+                  "pt-6 border-t space-y-4",
+                  theme === 'dark' ? "border-white/5" : "border-zinc-100"
+                )}
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">TDS Deducted</p>
+                    <p className={cn(
+                      "text-xs uppercase tracking-wider font-semibold",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>TDS Deducted</p>
                     <p className="text-lg font-bold text-red-400">{formatCurrency(taxDetails.tdsDeducted)}</p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className={cn(
+                      "text-[10px]",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>
                       {taxDetails.isTDSApplicable 
                         ? "Submit Form 15G/15H if total income is below taxable limit" 
                         : "Below TDS threshold — no TDS deducted"}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Tax Payable at Slab</p>
+                    <p className={cn(
+                      "text-xs uppercase tracking-wider font-semibold",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>Tax Payable at Slab</p>
                     <p className="text-lg font-bold text-red-400">{formatCurrency(taxDetails.taxPayable)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Post-Tax Interest</p>
+                    <p className={cn(
+                      "text-xs uppercase tracking-wider font-semibold",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>Post-Tax Interest</p>
                     <p className="text-lg font-bold text-emerald-400">{formatCurrency(taxDetails.postTaxInterest)}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Post-Tax Real Return</p>
-                    <p className="text-lg font-bold text-white">{taxDetails.postTaxRealReturn}%</p>
+                    <p className={cn(
+                      "text-xs uppercase tracking-wider font-semibold",
+                      theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                    )}>Post-Tax Real Return</p>
+                    <p className={cn(
+                      "text-lg font-bold",
+                      theme === 'dark' ? "text-white" : "text-zinc-900"
+                    )}>{taxDetails.postTaxRealReturn}%</p>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
           
-          <p className="text-[11px] text-zinc-500 leading-relaxed px-2 mt-4">
+          <p className={cn(
+            "text-[11px] leading-relaxed px-2 mt-4",
+            theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+          )}>
             Assumes 6% annual inflation — India's 10-year CPI average.
           </p>
           
@@ -529,8 +711,14 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-[35fr_65fr] gap-8 my-12">
         {/* Chart 1: Donut */}
-        <div className="glass-card p-6 min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">YOUR MONEY SPLIT</h3>
+        <div className={cn(
+          "p-6 min-w-0 transition-all duration-300",
+          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold mb-6 uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>YOUR MONEY SPLIT</h3>
           <div className="h-[300px] w-full relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -550,41 +738,67 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                 </Pie>
                 <RechartsTooltip 
                   cursor={false}
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
+                  contentStyle={{ 
+                    backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                    border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                    borderRadius: '8px', 
+                    color: theme === 'dark' ? '#fff' : '#18181b' 
+                  }}
+                  itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
                   formatter={(value: number) => [formatIndianRupees(value), '']}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-xl md:text-2xl font-bold text-white text-center px-4">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold text-center px-4",
+                theme === 'dark' ? "text-white" : "text-zinc-900"
+              )}>
                 {formatIndianRupees(isTaxExpanded && taxSlab > 0 ? taxDetails.postTaxMaturityAmount : result.maturityAmount)}
               </p>
               {isTaxExpanded && taxSlab > 0 && (
-                <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest mt-0.5">post-tax</p>
+                <p className={cn(
+                  "text-[10px] font-medium uppercase tracking-widest mt-0.5",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                )}>post-tax</p>
               )}
             </div>
           </div>
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-zinc-600" />
-              <span className="text-xs text-zinc-400">Principal</span>
+              <span className={cn(
+                "text-xs",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>Principal</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-zinc-400">Interest</span>
+              <span className={cn(
+                "text-xs",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>Interest</span>
             </div>
             {isTaxExpanded && taxSlab > 0 && (
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-400" />
-                <span className="text-xs text-zinc-400">Tax</span>
+                <span className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                )}>Tax</span>
               </div>
             )}
           </div>
         </div>
 
-        <div key={isTaxExpanded && taxSlab > 0 ? "tax-on" : "tax-off"} className="glass-card p-6 min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">WHERE YOUR MONEY GOES</h3>
+        <div key={isTaxExpanded && taxSlab > 0 ? "tax-on" : "tax-off"} className={cn(
+          "p-6 min-w-0 transition-all duration-300",
+          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+        )}>
+          <h3 className={cn(
+            "text-sm font-semibold mb-6 uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>WHERE YOUR MONEY GOES</h3>
           <div className="flex flex-col gap-0">
             <div className="h-[300px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
@@ -594,7 +808,7 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                   barSize={48}
                   barCategoryGap="30%"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="name" 
                     tick={false}
@@ -602,7 +816,7 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                     tickLine={false}
                   />
                   <YAxis 
-                    stroke="#52525b" 
+                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
@@ -610,8 +824,13 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                   />
                   <RechartsTooltip 
                     cursor={false}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                      border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px', 
+                      color: theme === 'dark' ? '#fff' : '#18181b' 
+                    }}
+                    itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
                     formatter={(value: number) => [formatIndianRupees(value), '']}
                   />
                   <Bar 
@@ -632,7 +851,7 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                           if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
                           return formatIndianRupees(val);
                         }}
-                        fill="#a1a1aa"
+                        fill={theme === 'dark' ? "#a1a1aa" : "#71717a"}
                         fontSize={10}
                         fontWeight="bold"
                       />
@@ -660,7 +879,10 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
                         }}
                       >
                         <div className="md:rotate-0 -rotate-90 md:origin-center origin-center whitespace-nowrap md:whitespace-normal">
-                          <span className="text-[10px] text-zinc-500 text-center leading-tight">
+                          <span className={cn(
+                            "text-[10px] text-center leading-tight",
+                            theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                          )}>
                             {isInflation ? (
                               <>
                                 <span className="hidden md:block">{pos.label.split(' ').slice(0, 2).join(' ')}</span>
@@ -685,7 +907,10 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
               </div>
             </div>
             {isTaxExpanded && taxSlab > 0 && (
-              <p className="text-[11px] text-zinc-400 mt-3 italic">
+              <p className={cn(
+                "text-[11px] mt-3 italic",
+                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+              )}>
                 Real value shown after income tax at {taxSlab}% and adjusted for {INFLATION_RATE}% inflation.
               </p>
             )}
@@ -693,32 +918,45 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
         </div>
       </div>
 
-      <AIInsightSection 
-        title="FD Strategy Vision"
-        description={`Your FD of ${formatCurrency(principal)} at ${fdRate}% will grow to ${formatCurrency(result.maturityAmount)}.`}
-        mainValue={result.maturityAmount}
-        mainLabel="Maturity Amount"
-        secondaryValues={[
-          { label: 'Gross Interest', value: result.grossInterest },
-          { label: 'Post-Tax Maturity', value: taxDetails.postTaxMaturityAmount },
-          { label: 'Real Return Rate', value: `${taxDetails.postTaxRealReturn}%` }
-        ]}
-        category="grow"
-        inputs={aiData}
-        onInsightGenerated={setAiInsight}
-        customPrompt={(() => {
-          const bulletInstructions = "Bullet 1 must state the inflationAdjustedPrincipal and compare it to the principal to show how much is needed just to maintain purchasing power. Bullet 2 must state the realSurplus (maturityAmount - inflationAdjustedPrincipal) to show the true wealth gain after inflation. Bullet 3 must state the realReturnRate and compare it to the nominal fdRate to show the impact of taxes and inflation combined.";
-          return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-        })()}
+      <WhatiffInsights 
+        calculatorType="fd" 
+        insights={insights}
+        chips={chips}
+        systemPrompt={systemPrompt}
+        results={{ ...result, totalInterest: result.grossInterest, principal, interestRate: fdRate }} 
+        onAskAI={onAskAI}
+      />
+
+      <AIChat 
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        messages={messages}
+        input={chatInput}
+        setInput={setChatInput}
+        onSend={handleSendMessage}
+        isLoading={isChatLoading}
+        showChips={showChatChips}
+        chips={chips}
+        questionCount={questionCount}
+        maxQuestions={MAX_QUESTIONS}
       />
 
       {/* Nudge Card */}
-      <div className="glass-card p-6 border-l-4 border-emerald-500 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className={cn(
+        "p-6 border-l-4 border-emerald-500 flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300",
+        theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+      )}>
         <div className="space-y-2">
-          <p className="text-white font-medium">
+          <p className={cn(
+            "font-medium",
+            theme === 'dark' ? "text-white" : "text-zinc-900"
+          )}>
             💡 What if you staggered this FD?
           </p>
-          <p className="text-sm text-zinc-400 max-w-xl">
+          <p className={cn(
+            "text-sm max-w-xl",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-600"
+          )}>
             Splitting {formatCurrency(principal)} into multiple FDs maturing every few months gives you liquidity without sacrificing returns.
           </p>
         </div>
@@ -733,13 +971,21 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
       {/* Top Banks Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Top Banks</h3>
+          <h3 className={cn(
+            "text-sm font-bold uppercase tracking-widest",
+            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+          )}>Top Banks</h3>
         </div>
         <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
           {TOP_BANKS.map((bank) => (
             <div 
               key={bank.name} 
-              className="flex-shrink-0 w-[160px] glass-card p-4 space-y-4 border border-zinc-700 bg-zinc-800 rounded-[12px] hover:shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all group relative"
+              className={cn(
+                "flex-shrink-0 w-[160px] p-4 space-y-4 border rounded-[12px] transition-all group relative",
+                theme === 'dark' 
+                  ? "bg-zinc-800 border-zinc-700 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
+                  : "bg-white border-zinc-200 hover:shadow-md"
+              )}
             >
               <div className="flex items-start justify-between">
                 <div className="w-12 h-12 rounded-lg bg-white p-1.5 flex items-center justify-center overflow-hidden">
@@ -803,9 +1049,9 @@ export default function BasicFDCalculator({ onBack, onNavigate }: BasicFDCalcula
           { label: 'Tenure', value: `${tenure} Months` },
           { label: 'Post-Tax Interest', value: taxDetails.postTaxInterest }
         ]}
-        insight={renderInsight(aiInsight || (isTaxExpanded && taxSlab > 0
+        insight={isTaxExpanded && taxSlab > 0
           ? `After ${taxSlab}% tax your FD earns ₹${taxDetails.postTaxInterest} — a post-tax real return of ${taxDetails.postTaxRealReturn}% after ${INFLATION_RATE}% inflation. The same amount in an equity mutual fund at 12% historical returns would have grown to ${formatCurrency(sipCorpus)} over the same period.`
-          : `Your ${formatCurrency(principal)} FD earns ${formatCurrency(result.grossInterest)} at ${fdRate}% — but after ${INFLATION_RATE}% inflation your money is worth only ${formatCurrency(realMaturityValue)} in today's purchasing power. You lost ${formatCurrency(Math.abs(realGain))} in real terms.`))}
+          : `Your ${formatCurrency(principal)} FD earns ${formatCurrency(result.grossInterest)} at ${fdRate}% — but after ${INFLATION_RATE}% inflation your money is worth only ${formatCurrency(realMaturityValue)} in today's purchasing power. You lost ${formatCurrency(Math.abs(realGain))} in real terms.`}
         category="grow"
         inputs={{ 
           principal, 

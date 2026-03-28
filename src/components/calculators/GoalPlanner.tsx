@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useContext } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { 
   PieChart, 
@@ -13,34 +14,118 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { Target, Info, Share2, Sparkles, Download, Instagram, MessageCircle, Linkedin, ChevronLeft } from 'lucide-react';
+import { Target, Info, Share2, Download, Instagram, MessageCircle, Linkedin } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { INFLATION_RATE } from '../../lib/calculators';
-import { formatCurrency, cn, formatCompactNumber, formatIndianRupees } from '../../lib/utils';
+import { formatCurrency, cn, formatCompactNumber, formatIndianRupees, formatIndianShort, formatCurrencyForAI } from '../../lib/utils';
 import SaveScenarioButton from '../SaveScenarioButton';
 import ShareVision from '../ShareVision';
 import InvestmentBrokerSection from '../InvestmentBrokerSection';
 import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
-
+import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
+import AIChat from '../AIChat';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface GoalPlannerProps {
   onBack: () => void;
   initialData?: {
     targetAmount?: number;
   };
+  onAskAI?: (context?: any) => void;
 }
 
-export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe.toFixed(1)} years`;
+  if (type === 'months') return `${Math.round(safe)} months`;
+  return safe.toString();
+};
+
+export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlannerProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState(initialData?.targetAmount || 5000000);
   const [years, setYears] = useState(10);
   const [monthlySIP, setMonthlySIP] = useState(15000);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [aiInsight, setAiInsight] = useState<string>('');
+
+  // AI Chat State (Isolated per calculator)
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatContext, setChatContext] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [questionCount, setQuestionCount] = useState(0);
+  const MAX_QUESTIONS = 10;
+  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
+
+  useEffect(() => {
+    setMessages([]);
+    setChatInput('');
+    setIsChatLoading(false);
+    setHasUserInteracted(false);
+    setQuestionCount(0);
+  }, []);
+
+  const handleAskAI = (context?: any, chips?: string[], systemPrompt?: string) => {
+    setChatContext({ ...context, chips, systemPrompt });
+    setIsChatOpen(true);
+  };
+
+  const handleSendMessage = async (content: string) => {
+    if (questionCount >= MAX_QUESTIONS) return;
+
+    const userMessage = { role: 'user', content };
+    setMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsChatLoading(true);
+    setHasUserInteracted(true);
+    setQuestionCount(prev => prev + 1);
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: content,
+          sessionId,
+          systemPrompt: `${GLOBAL_AI_INSTRUCTION}\n\nContext for this Goal calculation:\n${chatContext?.systemPrompt || ''}`,
+          context: { targetAmount, years, monthlySIP }
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to get AI response');
+      }
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+    } catch (error: any) {
+      console.error('AI Chat Error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `I'm sorry, I encountered an error: ${error.message}. Please try again.` 
+      }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   const { isOverInvesting, simpleMonthlyNeeded } = useMemo(() => {
     const tenureMonths = years * 12;
@@ -59,7 +144,7 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
 
     for (let i = 0; i < 100; i++) {
       const r = (low + high) / 2;
-      const monthlyRate = r / 12;
+      const monthlyRate = Math.pow(1 + r, 1 / 12) - 1;
       let fv = 0;
       if (monthlyRate === 0) {
         fv = monthlySIP * n;
@@ -83,7 +168,7 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
 
   const yearlyData = useMemo(() => {
     const data = [];
-    const monthlyRate = requiredReturn / 12 / 100;
+    const monthlyRate = Math.pow(1 + requiredReturn / 100, 1 / 12) - 1;
     const n = years * 12;
     let balance = 0;
     let investment = 0;
@@ -137,14 +222,14 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
     }
   }, [requiredReturn]);
 
-  const aiData = useMemo(() => {
+  const { results, aiData, insights, chips, systemPrompt } = useMemo(() => {
     const totalInvested = monthlySIP * years * 12;
     const inflationAdjustedPrincipal = totalInvested * Math.pow(1 + INFLATION_RATE / 100, years);
     const purchasingPowerLoss = inflationAdjustedPrincipal - totalInvested;
     const realSurplus = targetAmount - inflationAdjustedPrincipal;
     
     const realReturnRate = ((1 + requiredReturn / 100) / (1 + INFLATION_RATE / 100) - 1) * 100;
-    const monthlyRealRate = realReturnRate / 12 / 100;
+    const monthlyRealRate = Math.pow(1 + realReturnRate / 100, 1 / 12) - 1;
     const n = years * 12;
     let realCorpus = 0;
     for (let m = 1; m <= n; m++) {
@@ -152,7 +237,37 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
     }
     const monthlyRealGain = (realCorpus - totalInvested) / n;
 
-    return {
+    // Pre-calculated strings for AI to prevent hallucination
+    const principalToGoalRatio = ((totalInvested / targetAmount) * 100).toFixed(1);
+    const growthToGoalRatio = (100 - parseFloat(principalToGoalRatio)).toFixed(1);
+    const formattedTotalInvested = formatIndianShort(totalInvested);
+    const formattedTargetAmount = formatIndianShort(targetAmount);
+    const formattedInflationAdjustedPrincipal = formatIndianShort(inflationAdjustedPrincipal);
+    const formattedPurchasingPowerLoss = formatIndianShort(purchasingPowerLoss);
+    const formattedRealSurplus = formatIndianShort(realSurplus);
+
+    const totalEarnings = isOverInvesting ? 0 : targetAmount - totalInvested;
+    const wealthGainPercent = isOverInvesting ? 0 : Math.round((totalEarnings / targetAmount) * 100);
+
+    const yearlyData = [];
+    const monthlyRate = Math.pow(1 + requiredReturn / 100, 1 / 12) - 1;
+    let balance = 0;
+    let investment = 0;
+
+    for (let m = 1; m <= n; m++) {
+      balance = (balance + monthlySIP) * (1 + monthlyRate);
+      investment += monthlySIP;
+
+      if (m % 12 === 0) {
+        yearlyData.push({
+          year: m / 12,
+          balance: Math.round(balance),
+          investment: Math.round(investment),
+        });
+      }
+    }
+
+    const results = {
       goalName,
       targetAmount,
       years,
@@ -164,7 +279,64 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
       realSurplus,
       realReturnRate,
       realCorpus,
-      monthlyRealGain
+      monthlyRealGain,
+      principalToGoalRatio,
+      growthToGoalRatio,
+      formattedTotalInvested,
+      formattedTargetAmount,
+      formattedInflationAdjustedPrincipal,
+      formattedPurchasingPowerLoss,
+      formattedRealSurplus,
+      totalEarnings,
+      wealthGainPercent,
+      yearlyData
+    };
+
+    const target = targetAmount;
+    const wealthGain = target - totalInvested;
+    const principalPercent = (totalInvested / target) * 100;
+    const growthPercent = 100 - principalPercent;
+    const realValue = target / Math.pow(1 + INFLATION_RATE / 100, years);
+
+    const insightsList = [
+      `To reach **${formatInsightValue(target)}** in **${formatInsightValue(years, 'years')}**, you need a **${formatInsightValue(requiredReturn, 'percent')}** annual return.`,
+      `Your total investment of **${formatInsightValue(totalInvested)}** will grow by **${formatInsightValue(wealthGain)}** to meet your goal.`,
+      `Inflation will make your **${formatInsightValue(target)}** goal feel like **${formatInsightValue(realValue)}** in today's terms.`,
+      `You are contributing **${formatInsightValue(principalPercent, 'percent')}** of the goal, while market growth provides **${formatInsightValue(growthPercent, 'percent')}**.`
+    ].filter(s => !s.includes('₹0') && !s.includes(' 0%'));
+
+    const chipsList = [
+      `Is a ${formatInsightValue(requiredReturn, 'percent')} return realistic?`,
+      `What if I increase my SIP by ₹5,000?`,
+      `How does inflation affect my ${formatInsightValue(target)} goal?`,
+      `Show me the asset allocation for this goal.`
+    ];
+
+    const prompt = `
+      Explain the plan to reach a **${formatInsightValue(target)}** goal in **${formatInsightValue(years, 'years')}** with a **${formatInsightValue(monthlySIP)}** SIP.
+      Highlight that the required return is **${formatInsightValue(requiredReturn, 'percent')}**.
+      Explain that the total investment is **${formatInsightValue(totalInvested)}** and the wealth gain is **${formatInsightValue(wealthGain)}**.
+    `.trim();
+
+    return {
+      results,
+      insights: insightsList,
+      chips: chipsList,
+      systemPrompt: prompt,
+      aiData: {
+        goalName,
+        targetAmount: formatCurrencyForAI(targetAmount),
+        years,
+        monthlySIP: formatCurrencyForAI(monthlySIP),
+        requiredReturn: `${requiredReturn}%`,
+        totalInvested: formatCurrencyForAI(totalInvested),
+        realCorpus: formatCurrencyForAI(realCorpus),
+        principalToGoalRatio: `${principalToGoalRatio}%`,
+        growthToGoalRatio: `${growthToGoalRatio}%`,
+        formattedTotalInvested,
+        formattedTargetAmount,
+        formattedRealSurplus
+      }
     };
   }, [goalName, targetAmount, years, monthlySIP, requiredReturn]);
 
@@ -185,12 +357,17 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
 
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>Goal Planner — Plan Your Financial Goals | WhatIff</title>
+        <meta name="description" content="Reverse engineer your financial dreams. Calculate the required monthly SIP and return rate to reach your target corpus for any goal." />
+        <link rel="canonical" href="https://whatiff.in/goal-planner" />
+      </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <Target className="w-6 h-6 text-emerald-500" />
             Goal Planner
-          </h2>
+          </h1>
           <p className="text-zinc-500 text-sm">Reverse engineer your financial dreams.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -279,11 +456,14 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
         </div>
 
         {/* Results Card */}
-        <div className="glass-card p-8 space-y-8 flex flex-col w-full h-full">
+        <div className={cn(
+          "glass-card p-8 space-y-8 flex flex-col w-full h-full transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Monthly SIP</p>
-              <p className="text-xl font-bold text-white">{formatCurrency(monthlySIP)}</p>
+              <p className={cn("text-xl font-bold", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(monthlySIP)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Required Return Rate</p>
@@ -297,10 +477,10 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5">
+          <div className={cn("grid grid-cols-2 gap-4 pt-6 border-t", isDark ? "border-white/5" : "border-zinc-100")}>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Total Invested</p>
-              <p className="text-lg font-bold text-white">{formatCurrency(totalInvestment)}</p>
+              <p className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(totalInvestment)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Wealth Gain</p>
@@ -337,15 +517,18 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Donut Chart */}
-        <div className="glass-card p-6 min-w-0">
+        <div className={cn(
+          "glass-card p-6 min-w-0 transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">Wealth Breakdown</h3>
           <div className="h-[300px] w-full relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Principal', value: totalInvestment },
-                    { name: 'Wealth Gain', value: Math.max(0, totalEarnings) }
+                    { name: 'Principal', value: results.totalInvested },
+                    { name: 'Wealth Gain', value: Math.max(0, results.totalEarnings) }
                   ]}
                   cx="50%"
                   cy="50%"
@@ -355,22 +538,26 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
                   dataKey="value"
                   stroke="none"
                 >
-                  <Cell fill="#52525b" />
+                  <Cell fill={isDark ? "#52525b" : "#d1d5db"} />
                   <Cell fill="#10b981" />
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                  itemStyle={{ color: '#fff' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                    borderRadius: '8px' 
+                  }}
+                  itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
                   formatter={(value: number) => [formatCurrency(value), '']}
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-3xl font-bold text-emerald-400">
-                {wealthGainPercent}%
-              </p>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Wealth Gain</p>
-            </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className="text-3xl font-bold text-emerald-400">
+                  {results.wealthGainPercent}%
+                </p>
+                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Wealth Gain</p>
+              </div>
           </div>
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
@@ -385,35 +572,44 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
         </div>
 
         {/* Growth Chart */}
-        <div className="glass-card p-6 min-w-0">
+        <div className={cn(
+          "glass-card p-6 min-w-0 transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">Growth Projection</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={yearlyData}>
+              <AreaChart data={results.yearlyData}>
                 <defs>
                   <linearGradient id="colorValueGoal" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                 <XAxis 
                   dataKey="year" 
-                  stroke="#52525b" 
+                  stroke={isDark ? "#52525b" : "#a1a1aa"} 
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false}
-                  label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: '#52525b', fontSize: 10 }}
+                  label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
                 />
                 <YAxis 
-                  stroke="#52525b" 
+                  stroke={isDark ? "#52525b" : "#a1a1aa"} 
                   fontSize={10} 
                   tickLine={false} 
                   axisLine={false}
                   tickFormatter={(val) => formatCompactNumber(val)}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                    borderRadius: '8px',
+                    color: isDark ? '#ffffff' : '#09090b'
+                  }}
+                  itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
                   formatter={(value: number) => [formatCurrency(value), 'Value']}
                   labelFormatter={(label) => `Year ${label}`}
                 />
@@ -543,26 +739,30 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
 
 
       {!isOverInvesting && (
-        <AIInsightSection 
-          title={`${goalName} Vision`}
-          description={`To achieve your goal of ${formatIndianRupees(targetAmount)} in ${years} years, you need a return rate of ${requiredReturn}% p.a.`}
-          mainValue={requiredReturn}
-          mainLabel="Required Return"
-          secondaryValues={[
-            { label: 'Target Amount', value: targetAmount },
-            { label: 'Time Period', value: `${years} Years` },
-            { label: 'Monthly SIP', value: monthlySIP },
-            { label: 'Wealth Gain', value: totalEarnings }
-          ]}
-          category="grow"
-          inputs={aiData}
-          onInsightGenerated={setAiInsight}
-          customPrompt={(() => {
-          const bulletInstructions = `Bullet 1 must state the ratio of totalInvested to targetAmount showing what percentage of the goal is coming from the user's pocket vs market growth. Bullet 2 must state the inflationAdjustedPrincipal and how much purchasing power is lost over the tenure at ${INFLATION_RATE}% inflation. Bullet 3 must state the realSurplus (targetAmount minus inflationAdjustedPrincipal) to show if the goal actually beats inflation in real terms.`;
-            return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-          })()}
+        <WhatiffInsights 
+          calculatorType="goal" 
+          insights={insights}
+          chips={chips}
+          systemPrompt={systemPrompt}
+          results={results} 
+          onAskAI={handleAskAI}
         />
       )}
+
+      {/* Local AI Chat Component */}
+      <AIChat 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        messages={messages}
+        input={chatInput}
+        setInput={setChatInput}
+        onSend={handleSendMessage}
+        isLoading={isChatLoading}
+        showChips={!hasUserInteracted}
+        chips={chatContext?.chips}
+        questionCount={questionCount}
+        maxQuestions={MAX_QUESTIONS}
+      />
 
       {/* Investment Platforms */}
       <InvestmentBrokerSection />
@@ -578,7 +778,7 @@ export default function GoalPlanner({ onBack, initialData }: GoalPlannerProps) {
           { label: 'Monthly SIP', value: monthlySIP },
           { label: 'Required Return', value: `${requiredReturn}%` }
         ]}
-        insight={renderInsight(aiInsight || (requiredReturn <= 12 ? "Achievable — This goal is well within historical market returns." : "Aggressive — Requires high equity exposure and risk tolerance."))}
+        insight={requiredReturn <= 12 ? "Achievable — This goal is well within historical market returns." : "Aggressive — Requires high equity exposure and risk tolerance."}
         category="grow"
         inputs={{ targetAmount, years, monthlySIP, requiredReturn }}
         onSave={() => setIsShareOpen(false)}

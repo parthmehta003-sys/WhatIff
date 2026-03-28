@@ -1,4 +1,4 @@
-export type CalculatorType = 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent';
+export type CalculatorType = 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'prepay_vs_invest';
 
 export interface SavedScenario {
   id: string;

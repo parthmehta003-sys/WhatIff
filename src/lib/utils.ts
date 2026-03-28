@@ -48,3 +48,17 @@ export function formatCompactNumber(number: number) {
     maximumFractionDigits: 1,
   }).format(number);
 }
+
+export function formatCurrencyForAI(amount: number) {
+  const rounded = Math.round(amount);
+  const abs = Math.abs(rounded);
+  if (abs >= 10000000) {
+    const val = (rounded / 10000000).toFixed(2);
+    return `₹${val} Cr`;
+  }
+  if (abs >= 100000) {
+    const val = (rounded / 100000).toFixed(2);
+    return `₹${val} L`;
+  }
+  return `₹${rounded.toLocaleString('en-IN')}`;
+}

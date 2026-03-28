@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart, 
@@ -13,16 +14,15 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { Home, ArrowDown, CheckCircle2, AlertCircle, Sparkles, Share2, MapPin, ChevronLeft, Download, Target, BarChart3, ArrowRight } from 'lucide-react';
+import { Home, ArrowDown, CheckCircle2, AlertCircle, Sparkles, Share2, MapPin, Download, Target, BarChart3, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
-import { formatCurrency, cn, formatCompactNumber, formatIndianRupees } from '../../lib/utils';
+import { formatCurrency, cn, formatCompactNumber, formatIndianRupees, formatIndianShort, formatCurrencyForAI } from '../../lib/utils';
 import { calculateEMI, calculateRequiredSIP } from '../../lib/calculators';
 import SaveScenarioButton from '../SaveScenarioButton';
 import ShareVision from '../ShareVision';
 import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
-import AIInsightSection from '../AIInsightSection';
-import { renderInsight } from '../../renderInsight';
+import WhatiffInsights from '../WhatiffInsights';
 import { Screen } from '../../App';
 
 import SliderWithInput from '../SliderWithInput';
@@ -78,9 +78,28 @@ function useCountUp(target: number, duration = 800) {
 interface HomePurchaseCalculatorProps {
   onBack: () => void;
   onNavigate: (screen: Screen, state?: any) => void;
+  onAskAI?: (context?: any) => void;
 }
 
-export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurchaseCalculatorProps) {
+const safeNum = (val: any, fallback = 0): number => {
+  const num = Number(val);
+  return isNaN(num) || !isFinite(num) ? fallback : num;
+};
+
+const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' | 'months' = 'currency') => {
+  const safe = safeNum(val);
+  if (type === 'currency') {
+    if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(2)}Cr`;
+    if (safe >= 100000) return `₹${(safe / 100000).toFixed(2)}L`;
+    return `₹${Math.round(safe).toLocaleString('en-IN')}`;
+  }
+  if (type === 'percent') return `${safe.toFixed(2)}%`;
+  if (type === 'years') return `${safe.toFixed(1)} years`;
+  if (type === 'months') return `${Math.round(safe)} months`;
+  return safe.toString();
+};
+
+export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: HomePurchaseCalculatorProps) {
   const [price, setPrice] = useState(10000000);
   const [salary, setSalary] = useState(150000);
   const [savings, setSavings] = useState(500000);
@@ -89,7 +108,6 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
   const [showGoalPlanner, setShowGoalPlanner] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [aiInsight, setAiInsight] = useState<string>('');
   const [chartReady, setChartReady] = useState(false);
 
   useEffect(() => {
@@ -123,7 +141,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
     return 'safe';
   }, [monthlyEMI, salary]);
 
-  const aiData = useMemo(() => {
+  const { results, aiData } = useMemo(() => {
     const totalPayment = monthlyEMI * TENURE_YEARS * 12;
     const totalInterest = totalPayment - loanAmt;
     const emiToIncomePercent = (monthlyEMI / salary) * 100;
@@ -132,23 +150,94 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
     const totalCostOfAsset = price + totalInterest;
     const interestToPrincipalRatio = totalInterest / loanAmt;
 
-    return {
+    const amortizationData = [];
+    let remainingBalance = loanAmt;
+    const monthlyRate = RATE / 12 / 100;
+    const totalMonths = TENURE_YEARS * 12;
+
+    for (let m = 1; m <= totalMonths; m++) {
+      const interestPayment = remainingBalance * monthlyRate;
+      const principalPayment = monthlyEMI - interestPayment;
+      remainingBalance -= principalPayment;
+
+      if (m % 12 === 0) {
+        amortizationData.push({
+          year: m / 12,
+          principal: Math.round(loanAmt - remainingBalance),
+          interest: Math.round(totalInterest * (m / totalMonths)),
+          balance: Math.max(0, Math.round(remainingBalance))
+        });
+      }
+    }
+
+    const results = {
       propertyValue: price,
       salary,
       savings,
       yearsToGoal,
       downPayment,
       loanAmount: loanAmt,
+      loanAmt,
       monthlyEMI,
       totalInterest,
       totalPayment,
-      emiToIncomePercent,
-      monthsOfSalaryForInterest,
-      paisaLeftPerRupee,
       totalCostOfAsset,
-      interestToPrincipalRatio
+      emiToIncomePercent: emiToIncomePercent.toFixed(1),
+      interestToPrincipalRatio: interestToPrincipalRatio.toFixed(2),
+      paisaLeftPerRupee: (paisaLeftPerRupee * 100).toFixed(1),
+      amortizationData
+    };
+
+    return {
+      results,
+      aiData: {
+        propertyValue: formatCurrencyForAI(price),
+        salary: formatCurrencyForAI(salary),
+        savings: formatCurrencyForAI(savings),
+        downPayment: formatCurrencyForAI(downPayment),
+        loanAmount: formatCurrencyForAI(loanAmt),
+        monthlyEMI: formatCurrencyForAI(monthlyEMI),
+        totalInterest: formatCurrencyForAI(totalInterest),
+        totalPayment: formatCurrencyForAI(totalPayment),
+        totalCostOfAsset: formatCurrencyForAI(totalCostOfAsset),
+        emiToIncomePercent: results.emiToIncomePercent,
+        interestToPrincipalRatio: results.interestToPrincipalRatio,
+        paisaLeftPerRupee: results.paisaLeftPerRupee
+      }
     };
   }, [price, salary, savings, yearsToGoal, downPayment, loanAmt, monthlyEMI]);
+
+  const { insights, chips, systemPrompt } = useMemo(() => {
+    const propertyValue = price;
+    const downPaymentVal = downPayment;
+    const loanAmount = loanAmt;
+    const monthlyCost = monthlyEMI;
+    const totalCost = results.totalCostOfAsset;
+    const emiRatio = results.emiToIncomePercent;
+    const riskLevelVal = riskLevel;
+
+    const insightsList = [
+      `To buy a **${formatInsightValue(propertyValue)}** home, you need **${formatInsightValue(downPaymentVal)}** upfront and a **${formatInsightValue(loanAmount)}** loan.`,
+      `Your monthly cost will be **${formatInsightValue(monthlyCost)}**, including EMI and maintenance.`,
+      `The total cost of ownership over **${formatInsightValue(TENURE_YEARS, 'years')}** will be **${formatInsightValue(totalCost)}**, including interest.`,
+      `Your income-to-EMI ratio is **${formatInsightValue(Number(emiRatio), 'percent')}**, which is considered **${riskLevelVal}**.`
+    ].filter(s => !s.includes('₹0') && !s.includes(' 0%'));
+
+    const chipsList = [
+      `What if I increase my down payment by 10%?`,
+      `How do registration and stamp duty affect my upfront cost?`,
+      `Show me the 20-year cost of ownership.`,
+      `Is a ${formatInsightValue(Number(emiRatio), 'percent')} EMI ratio safe for my income?`
+    ];
+
+    const prompt = `
+      Analyze the home purchase plan for a **${formatInsightValue(propertyValue)}** property.
+      Explain that the required down payment is **${formatInsightValue(downPaymentVal)}** and the loan needed is **${formatInsightValue(loanAmount)}**.
+      Highlight that the total cost of ownership is **${formatInsightValue(totalCost)}**.
+    `.trim();
+
+    return { insights: insightsList, chips: chipsList, systemPrompt: prompt };
+  }, [price, downPayment, loanAmt, monthlyEMI, results, riskLevel]);
 
   const handleExport = () => {
     exportToExcel(
@@ -183,13 +272,18 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
 
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>Home Purchase Calculator — Can You Afford Your Dream Home? | WhatIff</title>
+        <meta name="description" content="Check your home purchase readiness. Calculate down payment, monthly EMI, and minimum salary required for your dream home in India." />
+        <link rel="canonical" href="https://whatiff.in/home-purchase" />
+      </Helmet>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             <Home className="w-6 h-6 text-blue-500" />
             Home Purchase Readiness
-          </h2>
+          </h1>
           <p className="text-zinc-500 text-sm">Can you buy that dream home?</p>
         </div>
         <div className="flex items-center gap-2">
@@ -463,8 +557,8 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
                   data={[
                     { 
                       name: 'Property Price', 
-                      'Down Payment': downPayment, 
-                      'Loan Amount': loanAmt 
+                      'Down Payment': results.downPayment, 
+                      'Loan Amount': results.loanAmt 
                     }
                   ]}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
@@ -504,7 +598,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={amortizationData}>
+                <AreaChart data={results.amortizationData}>
                   <defs>
                     <linearGradient id="colorPrincipal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -560,24 +654,13 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
         </div>
       </div>
 
-      <AIInsightSection 
-        title="Dream Home Vision"
-        description={`Your dream home in ${city} at ${formatIndianRupees(price)} is within reach. Monthly EMI would be ${formatIndianRupees(monthlyEMI)}.`}
-        mainValue={monthlyEMI}
-        mainLabel="Monthly EMI"
-        secondaryValues={[
-          { label: 'Home Price', value: price },
-          { label: 'Down Payment', value: downPayment },
-          { label: 'Loan Amount', value: loanAmt },
-          { label: 'Min. Salary', value: minSalary }
-        ]}
-        category="borrow"
-        inputs={aiData}
-        onInsightGenerated={setAiInsight}
-        customPrompt={(() => {
-          const bulletInstructions = "Bullet 1 must state the emiToIncomePercent and compare it to the monthly salary. Bullet 2 must state the monthsOfSalaryForInterest showing how many months of total work go only toward paying the bank's interest. Bullet 3 must state the paisaLeftPerRupee showing how much of every 1 rupee earned is left after the EMI is paid.";
-          return GLOBAL_AI_INSTRUCTION + "\n\nData:\n" + JSON.stringify(aiData) + "\n\nBullet instructions:\n" + bulletInstructions;
-        })()}
+      <WhatiffInsights 
+        calculatorType="home-purchase" 
+        insights={insights}
+        chips={chips}
+        systemPrompt={systemPrompt}
+        results={results} 
+        onAskAI={onAskAI}
       />
 
       {/* Explore Further Section */}
@@ -626,6 +709,25 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
               Compare Now <ArrowRight className="w-3 h-3" />
             </div>
           </button>
+
+          {/* Prepay vs Invest Card */}
+          <button 
+            onClick={() => onNavigate('prepay_vs_invest')}
+            className="glass-card p-6 text-left hover:bg-white/5 transition-all border-l-4 border-l-purple-500 flex flex-col justify-between group"
+          >
+            <div className="space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <ArrowUpRight className="w-5 h-5 text-purple-500" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-white group-hover:text-purple-400 transition-colors">Prepay vs Invest</h4>
+                <p className="text-xs text-zinc-500">Should you use extra money to close this loan faster or build wealth?</p>
+              </div>
+            </div>
+            <div className="mt-6 text-xs font-bold text-purple-500 flex items-center gap-1">
+              Compare Now <ArrowRight className="w-3 h-3" />
+            </div>
+          </button>
         </div>
       </div>
 
@@ -640,7 +742,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate }: HomePurch
           { label: 'Monthly EMI', value: monthlyEMI },
           { label: 'Min. Salary', value: minSalary }
         ]}
-        insight={renderInsight(aiInsight || (qualifies ? "Your salary qualifies for this purchase." : "Consider a lower price point or higher down payment."))}
+        insight={qualifies ? "Your salary qualifies for this purchase." : "Consider a lower price point or higher down payment."}
         category="buy"
         inputs={{ price, salary, savings, city, monthlyEMI, emiToIncome: Math.round((monthlyEMI / salary) * 100), propertyPrice: price, downPayment, loanAmount: loanAmt }}
         onSave={() => setIsShareOpen(false)}

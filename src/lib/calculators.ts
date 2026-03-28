@@ -16,9 +16,9 @@ export function calculateSIP(
   years: number,
   stepUpPercentage: number = 0
 ): SIPResult {
-  const monthlyRate = annualRate / 12 / 100;
+  const monthlyRate = Math.pow(1 + annualRate / 100, 1 / 12) - 1;
   const realReturnRate = ((1 + annualRate / 100) / (1 + INFLATION_RATE / 100) - 1) * 100;
-  const monthlyRealRate = realReturnRate / 12 / 100;
+  const monthlyRealRate = Math.pow(1 + realReturnRate / 100, 1 / 12) - 1;
   
   const months = years * 12;
   let futureValue = 0;
@@ -124,7 +124,7 @@ export function calculateRetirement(
   
   // Real rate of return post retirement
   const realRate = ((1 + expectedReturnPost / 100) / (1 + inflationRate / 100)) - 1;
-  const monthlyRealRate = realRate / 12;
+  const monthlyRealRate = Math.pow(1 + realRate, 1 / 12) - 1;
   const totalMonthsPost = yearsInRetirement * 12;
   
   // Corpus required (Present Value of Annuity)
@@ -326,7 +326,7 @@ export function calculateBuyVsRent(
     : (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths) / (Math.pow(1 + monthlyRate, totalMonths) - 1));
   const totalMonthlyBuyInitial = emi + maintenance;
   
-  const monthlySipRate = sipReturn / 12 / 100;
+  const monthlySipRate = Math.pow(1 + sipReturn / 100, 1 / 12) - 1;
 
   let totalRentPaid = 0;
   let currentMonthlyRent = currentRent;
@@ -418,7 +418,7 @@ export function calculateRentInvestCorpus(
   } else {
     emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
   }
-  const monthlySipRate = sipReturn / 12 / 100;
+  const monthlySipRate = Math.pow(1 + sipReturn / 100, 1 / 12) - 1;
 
   let currentMonthlyRent = currentRent;
   let currentSipBalance = downPayment; 
@@ -442,7 +442,7 @@ export function calculateRequiredSIP(
   if (targetAmount <= 0) return 0;
   if (years <= 0) return targetAmount;
   
-  const monthlyRate = annualRate / 12 / 100;
+  const monthlyRate = Math.pow(1 + annualRate / 100, 1 / 12) - 1;
   const months = years * 12;
   
   if (monthlyRate === 0) {
@@ -453,4 +453,219 @@ export function calculateRequiredSIP(
   // Rearranging for P: P = FV / ([((1 + r)^n - 1) / r] * (1 + r))
   const sip = targetAmount / (((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate));
   return Math.round(sip);
+}
+
+export interface PrepayVsInvestResult {
+  emi: number;
+  totalInterestWithout: number;
+  interestSaved: number;
+  monthsToClose: number;
+  yearsClosedEarly: number;
+  prepayNetBenefit: number;
+  sipCorpus: number;
+  interestStillPaid: number;
+  investNetBenefit: number;
+  taxSaved24b: number;
+  taxSaved80C: number;
+  winner: 'prepay' | 'invest';
+  margin: number;
+  breakEvenRate: number;
+  yearlyData: {
+    year: number;
+    prepayNetWorth: number;
+    investNetWorth: number;
+  }[];
+}
+
+export function calculatePrepayVsInvest(
+  loanAmount: number,
+  loanRate: number,
+  remainingTenure: number,
+  extraAmount: number,
+  sipReturn: number,
+  mode: 'extra' | 'full_emi',
+  frequency: 'monthly' | 'annual',
+  taxBracket: number,
+  section24bOn: boolean,
+  section80COn: boolean
+): PrepayVsInvestResult {
+  const monthlyRate = loanRate / 100 / 12;
+  const totalMonths = remainingTenure * 12;
+
+  // Current EMI
+  const emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+
+  // Total interest without any prepayment
+  const totalInterestWithout = (emi * totalMonths) - loanAmount;
+
+  // Scenario A — Prepay
+  let balance = loanAmount;
+  let totalInterestPaid = 0;
+  let monthsToClose = 0;
+  let totalTaxSaved24b = 0;
+  let annualInterest = 0;
+
+  const sipAmount = mode === 'full_emi' ? emi : extraAmount;
+
+  while (balance > 0 && monthsToClose < totalMonths) {
+    const interestThisMonth = balance * monthlyRate;
+    const principalThisMonth = emi - interestThisMonth;
+    totalInterestPaid += interestThisMonth;
+    annualInterest += interestThisMonth;
+    
+    let prepayThisMonth = 0;
+    if (mode === 'extra') {
+      if (frequency === 'monthly') {
+        prepayThisMonth = extraAmount;
+      } else if (frequency === 'annual' && (monthsToClose + 1) % 12 === 0) {
+        prepayThisMonth = extraAmount * 12;
+      }
+    }
+    
+    balance -= (principalThisMonth + prepayThisMonth);
+    balance = Math.max(0, balance);
+    monthsToClose++;
+
+    if (monthsToClose % 12 === 0 || balance <= 0) {
+      if (section24bOn) {
+        const deductibleInterest = Math.min(annualInterest, 200000);
+        totalTaxSaved24b += deductibleInterest * (taxBracket / 100);
+      }
+      annualInterest = 0;
+    }
+  }
+
+  const interestSaved = totalInterestWithout - totalInterestPaid;
+  const effectiveInterestSaved = interestSaved - totalTaxSaved24b;
+
+  // Scenario B — Invest in SIP
+  const monthlyReturn = Math.pow(1 + sipReturn / 100, 1 / 12) - 1;
+  const sipMonths = monthsToClose;
+  const sipCorpus = sipAmount * ((Math.pow(1 + monthlyReturn, sipMonths) - 1) / monthlyReturn) * (1 + monthlyReturn);
+
+  // Tax benefit 80C
+  const annualSIP = sipAmount * 12;
+  const deductible80C = Math.min(annualSIP, 150000);
+  const annualTaxSaved80C = section80COn ? (deductible80C * (taxBracket / 100)) : 0;
+  
+  // Compounded 80C tax savings
+  let totalTaxSaved80C = 0;
+  if (section80COn) {
+    for (let y = 1; y <= Math.floor(sipMonths / 12); y++) {
+      totalTaxSaved80C = (totalTaxSaved80C + annualTaxSaved80C) * Math.pow(1 + sipReturn / 100, 1);
+    }
+    const remainingMonths = sipMonths % 12;
+    if (remainingMonths > 0) {
+       totalTaxSaved80C = (totalTaxSaved80C + (annualTaxSaved80C * remainingMonths / 12)) * Math.pow(1 + sipReturn / 100, remainingMonths / 12);
+    }
+  }
+
+  const effectiveSIPCorpus = sipCorpus + totalTaxSaved80C;
+  const interestStillPaid = totalInterestWithout;
+  const prepayNetBenefit = effectiveInterestSaved;
+  const investNetBenefit = effectiveSIPCorpus - interestStillPaid;
+  
+  const winner = investNetBenefit > prepayNetBenefit ? 'invest' : 'prepay';
+  const margin = Math.abs(investNetBenefit - prepayNetBenefit);
+
+  // Break-even rate binary search
+  let low = 1;
+  let high = 40;
+  let breakEvenRate = 12;
+  for (let i = 0; i < 20; i++) {
+    const mid = (low + high) / 2;
+    const midReturn = Math.pow(1 + mid / 100, 1 / 12) - 1;
+    const midCorpus = sipAmount * ((Math.pow(1 + midReturn, sipMonths) - 1) / midReturn) * (1 + midReturn);
+    
+    let midTaxSavingsCorpus = 0;
+    if (section80COn) {
+      const midAnnualTaxSaved80C = deductible80C * (taxBracket / 100);
+      for (let y = 1; y <= Math.floor(sipMonths / 12); y++) {
+        midTaxSavingsCorpus = (midTaxSavingsCorpus + midAnnualTaxSaved80C) * Math.pow(1 + mid / 100, 1);
+      }
+      const remainingMonths = sipMonths % 12;
+      if (remainingMonths > 0) {
+         midTaxSavingsCorpus = (midTaxSavingsCorpus + (midAnnualTaxSaved80C * remainingMonths / 12)) * Math.pow(1 + mid / 100, remainingMonths / 12);
+      }
+    }
+    
+    const midInvestBenefit = (midCorpus + midTaxSavingsCorpus) - interestStillPaid;
+    if (midInvestBenefit > prepayNetBenefit) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+    breakEvenRate = mid;
+  }
+
+  // Yearly data for Chart 1
+  const yearlyData = [];
+  let prepayBalance = loanAmount;
+  let prepayInterestPaid = 0;
+  let investSIPBalance = 0;
+  let investLoanBalance = loanAmount;
+  let investInterestPaid = 0;
+  
+  for (let y = 0; y <= remainingTenure; y++) {
+    const months = y * 12;
+    
+    // Prepay Path simulation up to year y
+    let pBal = loanAmount;
+    let pInt = 0;
+    for (let m = 1; m <= months; m++) {
+      if (pBal <= 0) break;
+      const interest = pBal * monthlyRate;
+      const principal = emi - interest;
+      pInt += interest;
+      let prepay = 0;
+      if (mode === 'extra') {
+        if (frequency === 'monthly') prepay = extraAmount;
+        else if (frequency === 'annual' && m % 12 === 0) prepay = extraAmount * 12;
+      }
+      pBal -= (principal + prepay);
+      pBal = Math.max(0, pBal);
+    }
+    const cumulativeInterestSaved = Math.max(0, (emi * months - (loanAmount - pBal)) - pInt);
+    const prepayNetWorth = cumulativeInterestSaved + (loanAmount - pBal);
+
+    // Invest Path simulation up to year y
+    let iSIP = 0;
+    let iLoanBal = loanAmount;
+    for (let m = 1; m <= months; m++) {
+      // SIP Growth
+      iSIP = (iSIP + sipAmount) * (1 + monthlyReturn);
+      // Loan Payment (Normal)
+      if (iLoanBal > 0) {
+        const interest = iLoanBal * monthlyRate;
+        const principal = emi - interest;
+        iLoanBal -= principal;
+        iLoanBal = Math.max(0, iLoanBal);
+      }
+    }
+    const investNetWorth = iSIP - iLoanBal;
+
+    yearlyData.push({
+      year: y,
+      prepayNetWorth: Math.round(prepayNetWorth),
+      investNetWorth: Math.round(investNetWorth)
+    });
+  }
+
+  return {
+    emi: Math.round(emi),
+    totalInterestWithout: Math.round(totalInterestWithout),
+    interestSaved: Math.round(interestSaved),
+    monthsToClose,
+    yearsClosedEarly: (totalMonths - monthsToClose) / 12,
+    prepayNetBenefit: Math.round(prepayNetBenefit),
+    sipCorpus: Math.round(sipCorpus),
+    interestStillPaid: Math.round(interestStillPaid),
+    investNetBenefit: Math.round(investNetBenefit),
+    taxSaved24b: Math.round(totalTaxSaved24b),
+    taxSaved80C: Math.round(totalTaxSaved80C),
+    winner,
+    margin: Math.round(margin),
+    breakEvenRate: Math.round(breakEvenRate * 100) / 100,
+    yearlyData
+  };
 }
