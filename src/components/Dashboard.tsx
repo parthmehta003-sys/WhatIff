@@ -93,15 +93,6 @@ const calculators = [
     tag: 'Borrow',
   },
   {
-    id: 'prepay_vs_invest' as Screen,
-    name: 'Prepay vs Invest',
-    description: 'Should your extra money close your loan faster or build your wealth?',
-    icon: ArrowUpRight,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/10',
-    tag: 'Borrow',
-  },
-  {
     id: 'home_purchase' as Screen,
     name: 'Home Purchase',
     description: 'Can you buy that dream home? Check EMI and down payment readiness.',

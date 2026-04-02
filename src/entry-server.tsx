@@ -1,20 +1,26 @@
 import React from 'react';
-import ReactDOMServer from 'react-dom/server';
-import { StaticRouter } from 'react-router';
+import { renderToString } from 'react-dom/server';
+import { StaticRouter } from 'react-router-dom/server';
 import * as HelmetAsync from 'react-helmet-async';
 import App from './App';
+
+// Shim for CommonJS modules that expect 'module' to be defined
+if (typeof module === 'undefined') {
+  // @ts-ignore
+  globalThis.module = { exports: {} };
+}
 
 // Handle CommonJS named export issue in SSR
 const HelmetProvider = (HelmetAsync as any).HelmetProvider || HelmetAsync.HelmetProvider;
 
 export function render(url: string, helmetContext: any = {}) {
-  return ReactDOMServer.renderToString(
-    <React.StrictMode>
-      <HelmetProvider context={helmetContext}>
-        <StaticRouter location={url}>
-          <App />
-        </StaticRouter>
-      </HelmetProvider>
-    </React.StrictMode>
+  return renderToString(
+    React.createElement(React.StrictMode, null,
+      React.createElement(HelmetProvider, { context: helmetContext },
+        React.createElement(StaticRouter, { location: url },
+          React.createElement(App, null)
+        )
+      )
+    )
   );
 }

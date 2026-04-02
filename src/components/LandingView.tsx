@@ -313,14 +313,13 @@ export default function LandingView({ onStart, onNavigate }: LandingViewProps) {
             <div className="relative z-10 space-y-4">
               <div className="text-emerald-500 font-bold tracking-widest uppercase text-[10px]">Privacy</div>
               <h3 className="text-xl font-bold text-white leading-tight">Your numbers never leave your device.</h3>
-              <ul className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {['No login', 'No account', 'No data collection', 'Free to use', 'No paywall', 'No hidden agenda'].map(item => (
-                  <li key={item} className="flex items-center gap-2 text-zinc-400 text-xs">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500/50" />
+                  <span key={item} className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
                     {item}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
@@ -329,15 +328,14 @@ export default function LandingView({ onStart, onNavigate }: LandingViewProps) {
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 blur-3xl rounded-full group-hover:bg-purple-500/20 transition-colors" />
             <div className="relative z-10 space-y-4">
               <div className="text-purple-500 font-bold tracking-widest uppercase text-[10px]">Intelligence</div>
-              <h3 className="text-xl font-bold text-white leading-tight">AI that explains what your numbers mean.</h3>
-              <ul className="space-y-2">
-                {['Export to Excel', 'Share Your Vision', 'Plain language', 'Not jargon', 'Not advice', 'Just clarity'].map(item => (
-                  <li key={item} className="flex items-center gap-2 text-zinc-400 text-xs">
-                    <CheckCircle2 className="w-3 h-3 text-purple-500/50" />
+              <h3 className="text-xl font-bold text-white leading-tight">Explains what your numbers mean.</h3>
+              <div className="flex flex-wrap gap-2">
+                {['Export to Excel', 'Share Your Vision', 'AI chat', 'Plain language', 'Not jargon', 'Not advice', 'Just clarity'].map(item => (
+                  <span key={item} className="px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-medium">
                     {item}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
@@ -347,14 +345,13 @@ export default function LandingView({ onStart, onNavigate }: LandingViewProps) {
             <div className="relative z-10 space-y-4">
               <div className="text-cyan-500 font-bold tracking-widest uppercase text-[10px]">Action</div>
               <h3 className="text-xl font-bold text-white leading-tight">From insight to action in one tap.</h3>
-              <ul className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {['Compare Scenarios', 'Execute Your Plan', 'See your numbers', 'Understand them', 'Act on them'].map(item => (
-                  <li key={item} className="flex items-center gap-2 text-zinc-400 text-xs">
-                    <CheckCircle2 className="w-3 h-3 text-cyan-500/50" />
+                  <span key={item} className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-medium">
                     {item}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>

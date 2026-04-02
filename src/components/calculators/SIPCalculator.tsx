@@ -631,42 +631,6 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
         systemPrompt={systemPrompt}
       />
 
-      {/* Nudge Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className={cn(
-          "glass-card p-6 mb-8 cursor-pointer group transition-all duration-300 hover:scale-[1.01]",
-          isDark ? "bg-purple-500/10 border-purple-500/20" : "bg-purple-50 border-purple-100"
-        )}
-        onClick={() => onNavigate('prepay_vs_invest')}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-              isDark ? "bg-purple-500/20 text-purple-400" : "bg-white text-purple-600 shadow-sm"
-            )}>
-              <ArrowUpRight className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>
-                💡 Have a home loan? Should you invest this SIP or prepay your loan?
-              </h3>
-              <p className={cn("text-sm", isDark ? "text-zinc-400" : "text-zinc-500")}>
-                The answer might surprise you. Compare SIP returns with loan interest saved.
-              </p>
-            </div>
-          </div>
-          <div className={cn(
-            "flex items-center gap-2 font-bold text-sm transition-transform group-hover:translate-x-1",
-            isDark ? "text-purple-400" : "text-purple-600"
-          )}>
-            See Prepay vs Invest <ArrowRight className="w-4 h-4" />
-          </div>
-        </div>
-      </motion.div>
 
       {/* Local AI Chat Component */}
       <AIChat 

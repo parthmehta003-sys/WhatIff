@@ -2,10 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
+import { createRequire } from 'node:module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+globalThis.require = require;
 const toAbs = (p) => path.resolve(__dirname, '..', p);
 
 const routes = [
@@ -24,26 +25,14 @@ const routes = [
 ];
 
 async function prerender() {
-  console.log('Initializing Vite server for prerendering...');
+  console.log('Initializing prerendering from build...');
   fs.writeFileSync(toAbs('prerender-log.txt'), 'Prerender started\n');
   
-  // Enable ssr-un-lazy for the prerender server
-  process.env.VITE_SSR = 'true';
-
-  // Create a vite server to load the app in SSR mode
-  const vite = await createServer({
-    root: toAbs('.'),
-    server: { 
-      middlewareMode: true,
-      hmr: false // Disable HMR to avoid port conflicts
-    },
-    appType: 'custom'
-  });
+  process.env.NODE_ENV = 'production';
 
   const templatePath = toAbs('dist/index.html');
   if (!fs.existsSync(templatePath)) {
     console.error('dist/index.html not found. Did you run vite build?');
-    await vite.close();
     process.exit(1);
   }
 
@@ -51,10 +40,21 @@ async function prerender() {
 
   console.log('Starting prerendering...');
 
+  // Shim for CommonJS modules that expect 'module' to be defined
+  globalThis.module = { exports: {} };
+  
+  // Load the built SSR bundle
+  const serverBundlePath = toAbs('dist/entry-server.js');
+  if (!fs.existsSync(serverBundlePath)) {
+    console.error('dist/entry-server.js not found. Did you run vite build --ssr?');
+    process.exit(1);
+  }
+  
+  const { render } = await import(path.join('file://', serverBundlePath));
+
   for (const url of routes) {
     try {
       console.log(`Prerendering ${url}...`);
-      const { render } = await vite.ssrLoadModule('/src/entry-server.tsx');
       
       const helmetContext = {};
       const appHtml = await render(url, helmetContext);
@@ -104,7 +104,6 @@ async function prerender() {
     }
   }
 
-  await vite.close();
   console.log('Prerendering finished.');
 }
 

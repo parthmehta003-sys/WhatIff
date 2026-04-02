@@ -505,7 +505,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
       {isOverInvesting && (
         <div className="p-6 rounded-2xl bg-zinc-900 border-l-4 border-emerald-500 shadow-xl space-y-2">
           <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
-            WHATIFF AI INSIGHT
+            WHATIFF INSIGHT
           </p>
           <p className="text-sm text-zinc-300 leading-relaxed">
             With <span className="text-white font-medium">{formatCurrency(monthlySIP)}</span> per month for {years} years you will accumulate <span className="text-white font-medium">{formatIndianRupees(finalCorpus)}</span> — <span className="text-white font-medium">{formatIndianRupees(finalCorpus - targetAmount)}</span> more than your <span className="text-white font-medium">{formatIndianRupees(targetAmount)}</span> goal. 
@@ -638,7 +638,10 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
       {!isOverInvesting && (
         <div className="glass-card p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-white">Recommended Asset Allocation</h3>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">How Investors Typically Achieve {requiredReturn.toFixed(1)}% Returns</h3>
+              <p className="text-zinc-500 text-[11px]">Based on historical asset class performance. Not a recommendation.</p>
+            </div>
             <span className={cn(
               "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
               requiredReturn < 7 ? "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20" :

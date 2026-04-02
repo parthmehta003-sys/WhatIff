@@ -710,24 +710,6 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
             </div>
           </button>
 
-          {/* Prepay vs Invest Card */}
-          <button 
-            onClick={() => onNavigate('prepay_vs_invest')}
-            className="glass-card p-6 text-left hover:bg-white/5 transition-all border-l-4 border-l-purple-500 flex flex-col justify-between group"
-          >
-            <div className="space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <ArrowUpRight className="w-5 h-5 text-purple-500" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-white group-hover:text-purple-400 transition-colors">Prepay vs Invest</h4>
-                <p className="text-xs text-zinc-500">Should you use extra money to close this loan faster or build wealth?</p>
-              </div>
-            </div>
-            <div className="mt-6 text-xs font-bold text-purple-500 flex items-center gap-1">
-              Compare Now <ArrowRight className="w-3 h-3" />
-            </div>
-          </button>
         </div>
       </div>
 

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useRef, lazy } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
+import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import Footer from './Footer';
 
-const SIPCalculator = lazy(() => import('./calculators/SIPCalculator'));
+import SIPCalculator from './calculators/SIPCalculator';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -149,6 +151,75 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
   }, []);
 
   const [sipValues, setSipValues] = useState({ monthlyInvestment: 5000, annualRate: 12, years: 10, stepUp: 0 });
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [itemsToShow, setItemsToShow] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setItemsToShow(3);
+      else if (window.innerWidth >= 768) setItemsToShow(2);
+      else setItemsToShow(1);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const testimonials = [
+    {
+      quote: "I’ve used plenty of calculators before, but this is the first time I actually understood what my numbers mean; not just what they are.",
+      author: "Ankit Bhartia",
+      role: "Head - Finance, Compliance & Ops",
+      image: "/Ankit-Testimonial.jpg"
+    },
+    {
+      quote: "The most intuitive SIP calculator I've ever used. The step-up feature is exactly what I needed. It's clean, fast, and intelligent.",
+      author: "Binay Agarwal",
+      role: "Director - Finance Controller",
+      image: "/Binay-Testimonial.png"
+    },
+    {
+      quote: "Finally, a calculator that doesn't ask for my phone number before showing results. Privacy first approach is what won me over.",
+      author: "Mayur Rane",
+      role: "Senior Manager - Finance Operations",
+      image: "/Mayur-Testimonial.jpg"
+    },
+    {
+      quote: "Clean, fast, and intelligent. This is what financial tools should look like in 2026. No ads, no fluff, just pure utility.",
+      author: "Tanvi Dhurandhar",
+      role: "Entrepreneur",
+      image: "/Tanvi-Testimonial.jpg"
+    },
+    {
+      quote: "I always thought I had a decent plan, but this showed me where I actually stand. That clarity is what makes it valuable.",
+      author: "Sheenu Gaur",
+      role: "Brand Strategist",
+      image: "/Sheenu-Testimonial.png"
+    }
+  ];
+
+  const nextTestimonial = React.useCallback(() => {
+    setCurrentTestimonial((prev) => {
+      const maxIndex = Math.max(0, testimonials.length - itemsToShow);
+      if (prev >= maxIndex) return 0;
+      return prev + 1;
+    });
+  }, [testimonials.length, itemsToShow]);
+
+  const prevTestimonial = () => {
+    setCurrentTestimonial((prev) => {
+      const maxIndex = Math.max(0, testimonials.length - itemsToShow);
+      if (prev <= 0) return maxIndex;
+      return prev - 1;
+    });
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextTestimonial();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [nextTestimonial]);
 
   const handleFullBreakdown = () => {
     localStorage.setItem('sipPreFill', JSON.stringify({
@@ -171,7 +242,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
     <div style={{ background: '#09090b', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
       <Helmet>
         <title>WhatIff — Free Financial Calculators for Indian Investors</title>
-        <meta name="description" content="Free financial calculators for SIP, EMI, retirement, home loans & more. Privacy-first, no login required. Built for young Indian investors." />
+        <meta name="description" content="Free privacy-first financial calculators for SIP, EMI, retirement planning, home purchase & more. Built for young Indian investors. No login required." />
         <link rel="canonical" href="https://whatiff.in/" />
       </Helmet>
       {/* Header */}
@@ -351,14 +422,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           flexDirection: 'column',
           justifyContent: 'center'
         }}>
-          <Suspense fallback={
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <div style={{ width: '32px', height: '32px', border: '3px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            </div>
-          }>
-            <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
-          </Suspense>
+          <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
           
           <button 
             onClick={handleFullBreakdown}
@@ -381,6 +445,159 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           >
             See Full Breakdown →
           </button>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section style={{ padding: '100px 24px', background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+            <h2 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 900, letterSpacing: '-0.02em' }}>
+              Real people. <span style={{ color: '#10b981' }}>Real numbers.</span> Real decisions.
+            </h2>
+          </div>
+
+          <div style={{ position: 'relative', maxWidth: '1200px', margin: '0 auto', overflow: 'hidden' }}>
+            <motion.div
+              animate={{ x: `-${currentTestimonial * (100 / itemsToShow)}%` }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              style={{
+                display: 'flex',
+                width: '100%'
+              }}
+            >
+              {testimonials.map((testimonial, index) => (
+                <div 
+                  key={index} 
+                  style={{ 
+                    flex: `0 0 ${100 / itemsToShow}%`,
+                    padding: '0 12px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '24px',
+                      padding: '32px',
+                      height: '100%',
+                      minHeight: '320px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      left: 0, 
+                      right: 0, 
+                      height: '3px', 
+                      background: 'linear-gradient(90deg, #10b981, #8b5cf6, #06b6d4)',
+                      zIndex: 2
+                    }} />
+                    <div style={{ position: 'absolute', top: '20px', right: '24px', opacity: 0.1 }}>
+                      <Quote size={40} color="#10b981" />
+                    </div>
+                    
+                    <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.6, color: '#f4f4f5', marginBottom: '32px', position: 'relative', zIndex: 1, flex: 1 }}>
+                      {testimonial.quote}
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(16,185,129,0.3)' }}>
+                        <img 
+                          src={testimonial.image} 
+                          alt={testimonial.author} 
+                          referrerPolicy="no-referrer"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff' }}>{testimonial.author}</div>
+                        <div style={{ fontSize: '13px', color: '#71717a', fontWeight: 500 }}>{testimonial.role}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Carousel Controls */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'center' }}>
+              <button
+                onClick={prevTestimonial}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                }}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={nextTestimonial}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                }}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            {/* Indicators */}
+            <div style={{ display: 'flex', gap: '6px', marginTop: '24px', justifyContent: 'center' }}>
+              {testimonials.slice(0, Math.max(1, testimonials.length - itemsToShow + 1)).map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: idx === currentTestimonial ? '24px' : '6px',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: idx === currentTestimonial ? '#10b981' : 'rgba(255,255,255,0.2)',
+                    transition: 'all 0.3s'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -448,9 +665,9 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             }} />
             <div style={{ fontSize: '24px', marginBottom: '12px' }}>🤖</div>
             <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Intelligence</h3>
-            <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>AI that explains what your numbers mean.</p>
+            <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>Explains what your numbers mean.</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {["🤖 AI Insights", "📊 Export to Excel", "📲 Share Your Vision"].map(p => (
+              {["🤖 Insights", "📊 Export to Excel", "📲 Share Your Vision", "💬 AI chat"].map(p => (
                 <span key={p} style={{ 
                   background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', 
                   color: '#8b5cf6', borderRadius: '99px', padding: '4px 10px', fontSize: '11px', fontWeight: 600 
@@ -536,51 +753,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ 
-        borderTop: '1px solid rgba(255,255,255,0.05)', 
-        padding: '40px 24px', 
-        textAlign: 'center' 
-      }}>
-        <div style={{ color: '#52525b', fontWeight: 800, fontSize: '16px', marginBottom: '16px' }}>WhatIff</div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', color: '#3f3f46', fontSize: '12px', marginBottom: '16px' }}>
-          <a 
-            href="#privacy" 
-            style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }} 
-            onClick={(e) => { e.preventDefault(); onNavigate('privacy'); }}
-          >
-            Privacy Policy
-          </a>
-          <span>·</span>
-          <a 
-            href="#terms" 
-            style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }} 
-            onClick={(e) => { e.preventDefault(); onNavigate('terms'); }}
-          >
-            Terms of Use
-          </a>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <a 
-            href="mailto:hello.whatiff@gmail.com"
-            style={{
-              color: '#52525b',
-              fontSize: 12,
-              fontWeight: 500,
-              textDecoration: 'none',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={e => (e.target as HTMLElement).style.color = '#10b981'}
-            onMouseLeave={e => (e.target as HTMLElement).style.color = '#52525b'}
-          >
-            Contact: hello.whatiff@gmail.com
-          </a>
-        </div>
-        <p style={{ color: '#27272a', fontSize: '11px', marginBottom: '8px' }}>© 2026 WhatIff. All rights reserved.</p>
-        <p style={{ color: '#27272a', fontSize: '10px', maxWidth: '400px', margin: '0 auto' }}>
-          All calculations are for educational purposes only. Not financial advice. Not SEBI registered.
-        </p>
-      </footer>
+      <Footer onNavigate={onNavigate} />
     </div>
   );
 }

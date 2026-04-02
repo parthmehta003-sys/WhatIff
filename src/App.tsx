@@ -24,28 +24,26 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { trackPageView } from './lib/analytics';
 import AIChat from './components/AIChat';
+import Footer from './components/Footer';
 import { ThemeContext } from './contexts/ThemeContext';
 
-// Lazy load main views
-const LandingPage = lazy(() => import('./components/LandingPage'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
+// Import views synchronously for SSR/Prerendering support
+import LandingPage from './components/LandingPage';
+import Dashboard from './components/Dashboard';
+import SIPCalculator from './components/calculators/SIPCalculator';
+import EMICalculator from './components/calculators/EMICalculator';
+import GoalPlanner from './components/calculators/GoalPlanner';
+import RetirementCalculator from './components/calculators/RetirementCalculator';
+import LoanAffordability from './components/calculators/LoanAffordability';
+import HomePurchaseCalculator from './components/calculators/HomePurchaseCalculator';
+import StaggeredFDPlanner from './components/calculators/StaggeredFDPlanner';
+import BasicFDCalculator from './components/calculators/BasicFDCalculator';
+import BuyVsRentCalculator from './components/calculators/BuyVsRentCalculator';
+import ComparisonView from './components/ComparisonView';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfUse from './components/TermsOfUse';
 
-// Lazy load calculators and other views
-const SIPCalculator = lazy(() => import('./components/calculators/SIPCalculator'));
-const EMICalculator = lazy(() => import('./components/calculators/EMICalculator'));
-const GoalPlanner = lazy(() => import('./components/calculators/GoalPlanner'));
-const RetirementCalculator = lazy(() => import('./components/calculators/RetirementCalculator'));
-const LoanAffordability = lazy(() => import('./components/calculators/LoanAffordability'));
-const HomePurchaseCalculator = lazy(() => import('./components/calculators/HomePurchaseCalculator'));
-const StaggeredFDPlanner = lazy(() => import('./components/calculators/StaggeredFDPlanner'));
-const BasicFDCalculator = lazy(() => import('./components/calculators/BasicFDCalculator'));
-const BuyVsRentCalculator = lazy(() => import('./components/calculators/BuyVsRentCalculator'));
-const PrepayVsInvest = lazy(() => import('./components/calculators/PrepayVsInvest'));
-const ComparisonView = lazy(() => import('./components/ComparisonView'));
-const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
-const TermsOfUse = lazy(() => import('./components/TermsOfUse'));
-
-export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'prepay_vs_invest' | 'comparison' | 'privacy' | 'terms';
+export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'comparison' | 'privacy' | 'terms';
 
 const screenToPath: Record<Screen, string> = {
   landing: '/',
@@ -59,7 +57,6 @@ const screenToPath: Record<Screen, string> = {
   staggered_fd: '/staggered-fd-calculator',
   basic_fd: '/fd-calculator',
   buy_vs_rent: '/buy-vs-rent',
-  prepay_vs_invest: '/prepay-vs-invest',
   comparison: '/comparison',
   privacy: '/privacy',
   terms: '/terms'
@@ -225,7 +222,6 @@ export default function App() {
                   <Route path="/staggered-fd-calculator" element={<StaggeredFDPlanner onBack={() => navigate('/dashboard')} initialPrincipal={location.state?.principal} onAskAI={openChat} />} />
                   <Route path="/fd-calculator" element={<BasicFDCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/buy-vs-rent" element={<BuyVsRentCalculator onBack={() => navigate('/dashboard')} initialData={location.state} onAskAI={openChat} />} />
-                  <Route path="/prepay-vs-invest" element={<PrepayVsInvest onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/comparison" element={<ComparisonView ids={selectedScenarioIds} onBack={() => navigate('/dashboard')} />} />
                   <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
                   <Route path="/terms" element={<TermsOfUse onBack={() => navigate(-1)} />} />
@@ -234,6 +230,9 @@ export default function App() {
               </motion.div>
             </Suspense>
           </AnimatePresence>
+          {currentScreen !== 'landing' && (
+            <Footer onNavigate={handleNavigate} className="mt-20" />
+          )}
         </main>
 
         <AIChat 

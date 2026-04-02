@@ -44,7 +44,6 @@ const typeDisplayNames: Record<string, string> = {
   'retirement': 'Retirement',
   'affordability': 'Loan Affordability',
   'home_purchase': 'Home Purchase',
-  'prepay_vs_invest': 'Prepay vs Invest',
 };
 
 const typeIcons = {
@@ -56,7 +55,6 @@ const typeIcons = {
   home_purchase: Home,
   staggered_fd: TrendingUp,
   buy_vs_rent: Home,
-  prepay_vs_invest: ArrowUpRight,
 };
 
 const typeColors = {
@@ -68,7 +66,6 @@ const typeColors = {
   home_purchase: 'text-blue-400',
   staggered_fd: 'text-emerald-500',
   buy_vs_rent: 'text-emerald-500',
-  prepay_vs_invest: 'text-purple-500',
 };
 
 function buildComparisonPrompt(scenarios: SavedScenario[], type: string, mostAchievableName: string) {
@@ -221,19 +218,6 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
           isBest: (others: SavedScenario[]) => {
             const maxInt = Math.max(...others.map(o => o.outputs.postTaxInterest || 0));
             return s.outputs.postTaxInterest === maxInt;
-          }
-        };
-      case 'prepay_vs_invest':
-        const pviWinner = s.outputs.winner || (s.outputs.investNetWorth > s.outputs.prepayNetWorth ? 'invest' : 'prepay');
-        const pviMargin = s.outputs.winnerMargin || Math.abs((s.outputs.investNetWorth || 0) - (s.outputs.prepayNetWorth || 0));
-        return {
-          key: pviMargin || 0,
-          label: pviMargin > 1000 ? `${pviWinner === 'invest' ? 'Invest' : 'Prepay'} Wins By` : "Calculating...",
-          sec1: { label: 'Prepay NW', value: formatIndianRupees(s.outputs.prepayNetWorth || 0), color: 'red' },
-          sec2: { label: 'Invest NW', value: formatIndianRupees(s.outputs.investNetWorth || 0), color: 'emerald' },
-          isBest: (others: SavedScenario[]) => {
-            const maxMargin = Math.max(...others.map(o => o.outputs.winnerMargin || 0));
-            return s.outputs.winnerMargin === maxMargin;
           }
         };
       case 'buy_vs_rent':
@@ -430,7 +414,7 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
           {/* Dynamic Insight Bar */}
           <div className="border-l-4 border-emerald-500 bg-emerald-500/5 p-4 rounded-r-xl space-y-1">
             <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-bold uppercase tracking-widest">
-              WHATIFF AI
+              WHATIFF
             </div>
             <p className="text-[15px] text-white leading-relaxed">
               {dynamicInsightText}
@@ -697,7 +681,7 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
         {type === 'buy_vs_rent' ? (
           typeScenarios.every(s => (s.outputs.buyNetWorth || 0) > 0 && (s.outputs.rentNetWorth || 0) > 0) ? (
             <AIInsightSection 
-              title="AI Comparison Analysis"
+              title="Comparison Analysis"
               description={dynamicInsightText}
               mainValue={diff}
               mainLabel="Variance"
@@ -715,7 +699,7 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
         ) : type === 'basic_fd' ? (
           typeScenarios.every(s => (s.outputs.grossInterest || 0) > 0) ? (
             <AIInsightSection 
-              title="AI Comparison Analysis"
+              title="Comparison Analysis"
               description={dynamicInsightText}
               mainValue={diff}
               mainLabel="Variance"
@@ -727,12 +711,12 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
             />
           ) : (
             <div className="glass-card p-8 text-center border-dashed border-white/10">
-              <p className="text-zinc-500">Save two Basic FD scenarios to generate an AI comparison insight.</p>
+              <p className="text-zinc-500">Save two Basic FD scenarios to generate a comparison insight.</p>
             </div>
           )
         ) : (
           <AIInsightSection 
-            title="AI Comparison Analysis"
+            title="Comparison Analysis"
             description={dynamicInsightText}
             mainValue={diff}
             mainLabel="Variance"

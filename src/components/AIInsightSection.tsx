@@ -388,12 +388,12 @@ export default function AIInsightSection({
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
-                WHATIFF AI
+                WHATIFF
               </p>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 {insight 
                   ? (isComparison ? "Comparison Analysis Ready" : title) 
-                  : (isComparison ? "Get AI Comparison Insight" : "Generate AI Insights")
+                  : (isComparison ? "Get Comparison Insight" : "Generate Insights")
                 }
                 {!insight && <ArrowRight className="w-4 h-4 text-emerald-500" />}
               </h3>

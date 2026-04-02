@@ -303,7 +303,10 @@ ${JSON.stringify(context)}`;
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR !== 'true' ? undefined : false
+        hmr: false,
+        watch: {
+          usePolling: true,
+        },
       },
       appType: 'spa',
     });

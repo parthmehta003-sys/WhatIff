@@ -906,7 +906,7 @@ export default function ShareVision({
                   className="text-[9px] font-bold tracking-[0.2em] uppercase mb-3"
                   style={{ color: config.accentColor }}
                 >
-                  ✦ WHATIFF AI
+                  ✦ WHATIFF
                 </div>
               )}
               <div 
