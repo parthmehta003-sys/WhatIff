@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { ExternalLink, Star } from 'lucide-react';
 import { motion } from 'motion/react';
+import { cn } from '../lib/utils';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 interface BrokerSectionProps {
   type?: 'home' | 'general';
@@ -78,12 +80,14 @@ const BROKERS = {
 };
 
 export default function BrokerSection({ type = 'general' }: BrokerSectionProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const brokers = BROKERS[type];
 
   return (
-    <div className="space-y-6 pt-8 border-t border-white/5">
+    <div className={cn("space-y-6 pt-8 border-t transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-200")}>
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-white">Top Lenders</h3>
+        <h3 className={cn("text-xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>Top Lenders</h3>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -96,10 +100,15 @@ export default function BrokerSection({ type = 'general' }: BrokerSectionProps) 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-card p-5 hover:bg-white/5 transition-all group cursor-pointer border border-white/5 hover:border-white/10 block"
+            className={cn(
+              "glass-card p-5 transition-all group cursor-pointer border block",
+              isDark 
+                ? "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20" 
+                : "bg-white border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm"
+            )}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-lg bg-white p-1.5 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-white p-1.5 flex items-center justify-center shadow-sm border border-zinc-100">
                 <img 
                   src={broker.logo} 
                   alt={broker.name} 
@@ -118,19 +127,25 @@ export default function BrokerSection({ type = 'general' }: BrokerSectionProps) 
             </div>
             
             <div className="space-y-1 mb-4">
-              <h4 className="font-bold text-white group-hover:text-purple-400 transition-colors">{broker.name}</h4>
-              <p className="text-xs text-zinc-500">Starting at <span className="text-white font-semibold">{broker.rate}</span></p>
+              <h4 className={cn("font-bold transition-colors duration-300 group-hover:text-purple-500", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900")}>{broker.name}</h4>
+              <p className="text-xs text-zinc-500">Starting at <span className={cn("font-semibold", isDark ? "text-white" : "text-zinc-900")}>{broker.rate}</span></p>
             </div>
             
             <div className="flex flex-wrap gap-1.5 mb-4">
               {broker.tags.map(tag => (
-                <span key={tag} className="text-[9px] font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded uppercase tracking-wider">
+                <span key={tag} className={cn(
+                  "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
+                  isDark ? "text-zinc-400 bg-white/5" : "text-zinc-500 bg-zinc-100"
+                )}>
                   {tag}
                 </span>
               ))}
             </div>
             
-            <div className="flex items-center justify-between text-[10px] font-bold text-purple-500 uppercase tracking-widest pt-3 border-t border-white/5">
+            <div className={cn(
+              "flex items-center justify-between text-[10px] font-bold uppercase tracking-widest pt-3 border-t transition-colors duration-300",
+              isDark ? "text-purple-400 border-white/5" : "text-purple-600 border-zinc-100"
+            )}>
               Check Eligibility
               <ExternalLink className="w-3 h-3" />
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useContext } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   LineChart, 
@@ -21,6 +21,7 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import { Screen } from '../../App';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface BuyVsRentCalculatorProps {
   onBack: () => void;
@@ -52,6 +53,8 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
 };
 
 export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: BuyVsRentCalculatorProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [propertyPrice, setPropertyPrice] = useState(initialData?.propertyPrice || 6000000);
   const [downPaymentPercent, setDownPaymentPercent] = useState(initialData?.downPaymentPercent || 20);
   const [loanRate, setLoanRate] = useState(initialData?.loanRate || 8.5);
@@ -196,7 +199,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <BarChart3 className="w-6 h-6 text-emerald-500" />
             Buy vs Rent Calculator
           </h1>
@@ -205,7 +208,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -249,7 +252,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -366,18 +369,21 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
 
         {/* Results Card */}
         <div className="space-y-6 flex flex-col">
-          <div className="glass-card p-8 space-y-8 flex flex-col w-full h-full">
+          <div className={cn(
+            "glass-card p-8 space-y-8 flex flex-col w-full h-full transition-colors duration-300",
+            isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+          )}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Buy Column */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <h4 className="text-sm font-bold text-white uppercase tracking-widest">BUY</h4>
+                  <h4 className={cn("text-sm font-bold uppercase tracking-widest transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>BUY</h4>
                 </div>
                 
                 <div className="space-y-1">
                   <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Monthly Cost</p>
-                  <p className="text-xl font-bold text-white">{formatCurrency(result.totalMonthlyBuy)}</p>
+                  <p className={cn("text-xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(result.totalMonthlyBuy)}</p>
                   <p className="text-[10px] text-zinc-500">EMI + Maintenance</p>
                 </div>
 
@@ -391,9 +397,9 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
                   <p className="text-xl font-bold text-red-400">{formatCurrency(result.totalPaidBuy)}</p>
                 </div>
 
-                <div className="pt-4 border-t border-white/5 space-y-1">
+                <div className={cn("pt-4 border-t space-y-1 transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-100")}>
                   <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Net Worth</p>
-                  <p className="text-2xl font-bold text-white">{formatCurrency(result.netWorthBuy)}</p>
+                  <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(result.netWorthBuy)}</p>
                 </div>
               </div>
 
@@ -401,12 +407,12 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-2 rounded-full bg-zinc-500" />
-                  <h4 className="text-sm font-bold text-white uppercase tracking-widest">RENT + INVEST</h4>
+                  <h4 className={cn("text-sm font-bold uppercase tracking-widest transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>RENT + INVEST</h4>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Monthly Cost</p>
-                  <p className="text-xl font-bold text-white">{formatCurrency(currentRent)}</p>
+                  <p className={cn("text-xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(currentRent)}</p>
                   <p className="text-[10px] text-zinc-500">increases {rentIncrease}% yearly</p>
                 </div>
 
@@ -428,25 +434,25 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
                   <p className="text-xl font-bold text-red-400">{formatCurrency(result.totalRentPaid)}</p>
                 </div>
 
-                <div className="pt-4 border-t border-white/5 space-y-1">
+                <div className={cn("pt-4 border-t space-y-1 transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-100")}>
                   <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Net Worth</p>
-                  <p className="text-2xl font-bold text-white">{formatCurrency(result.netWorthRent)}</p>
+                  <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(result.netWorthRent)}</p>
                 </div>
               </div>
             </div>
 
             {/* Verdict */}
-            <div className="pt-8 border-t border-white/5 text-center space-y-2">
+            <div className={cn("pt-8 border-t text-center space-y-2 transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-100")}>
               <h3 className={cn(
-                "text-2xl md:text-3xl font-bold",
-                result.netWorthRent > result.netWorthBuy ? "text-emerald-400" : "text-white"
+                "text-2xl md:text-3xl font-bold transition-colors duration-300",
+                result.netWorthRent > result.netWorthBuy ? "text-emerald-400" : (isDark ? "text-white" : "text-zinc-900")
               )}>
                 {winner} wins by {formatCurrency(difference)} after {tenureYears} years
               </h3>
               <p className="text-zinc-400 text-sm">
                 Buying gives you a home you own. Renting gives you flexibility and liquidity. The right choice depends on more than just numbers.
               </p>
-              <p className="text-zinc-300 text-sm font-medium pt-2">
+              <p className={cn("text-sm font-medium pt-2 transition-colors duration-300", isDark ? "text-zinc-300" : "text-zinc-700")}>
                 {result.breakEvenYear 
                   ? (result.breakEvenYear === 1 
                       ? "Renting + Investing is ahead from the very first year" 
@@ -459,47 +465,57 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
       </div>
 
       {/* Chart */}
-      <div className="glass-card p-8">
+      <div className={cn(
+        "glass-card p-8 transition-colors duration-300",
+        isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+      )}>
         <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-8">Net Worth Trajectory</h3>
         <div className="h-[400px] w-full" style={{ minWidth: 0, minHeight: 400 }}>
           {chartReady && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={result.yearlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                 <XAxis 
                   dataKey="year" 
-                  stroke="#52525b" 
+                  stroke="#a1a1aa" 
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false}
-                  label={{ value: 'Years', position: 'insideBottom', offset: -10, fill: '#52525b', fontSize: 12 }}
+                  label={{ value: 'Years', position: 'insideBottom', offset: -10, fill: '#a1a1aa', fontSize: 12 }}
                 />
                 <YAxis 
-                  stroke="#52525b" 
+                  stroke="#a1a1aa" 
                   fontSize={10} 
                   tickLine={false} 
                   axisLine={false}
                   tickFormatter={(val) => formatCompactNumber(val)}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
+                    borderRadius: '8px' 
+                  }}
+                  itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                   formatter={(value: number) => [formatCurrency(value), '']}
                   labelFormatter={(label) => `Year ${label}`}
                 />
                 <Line 
+                  isAnimationActive={false}
                   type="monotone" 
                   dataKey="buyNetWorth" 
                   name="Buying"
-                  stroke={result.netWorthBuy >= result.netWorthRent ? "#10b981" : "#52525b"} 
+                  stroke={result.netWorthBuy >= result.netWorthRent ? "#10b981" : "#a1a1aa"} 
                   strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 6 }}
                 />
                 <Line 
+                  isAnimationActive={false}
                   type="monotone" 
                   dataKey="rentNetWorth" 
                   name="Renting"
-                  stroke={result.netWorthRent > result.netWorthBuy ? "#10b981" : "#52525b"} 
+                  stroke={result.netWorthRent > result.netWorthBuy ? "#10b981" : "#a1a1aa"} 
                   strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 6 }}

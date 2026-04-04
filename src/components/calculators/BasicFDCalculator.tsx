@@ -415,19 +415,19 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", theme === 'dark' ? "text-white" : "text-zinc-900")}>
             <TrendingUp className="w-6 h-6 text-emerald-500" />
             Basic FD Calculator
           </h1>
           <p className={cn(
-            "text-sm",
+            "text-sm transition-colors duration-300",
             theme === 'dark' ? "text-zinc-500" : "text-zinc-600"
           )}>Calculate your fixed deposit returns and tax impact.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -462,7 +462,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -504,7 +504,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
             footerLabel="Best rates typically between 12–36 months"
           />
 
-          <div className="pt-4 border-t border-white/5 space-y-6">
+          <div className={cn("pt-4 border-t space-y-6 transition-colors duration-300", theme === 'dark' ? "border-white/5" : "border-zinc-100")}>
             <div className="space-y-3">
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Citizen Type</label>
               <div className="flex gap-2">
@@ -516,7 +516,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                       "flex-1 py-2 px-4 rounded-xl text-xs font-bold border transition-all",
                       citizenType === type 
                         ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" 
-                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
+                        : (theme === 'dark' ? "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700" : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300")
                     )}
                   >
                     {type === 'Senior' ? 'Senior Citizen 60+' : 'Regular'}
@@ -525,10 +525,10 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/5">
+            <div className={cn("pt-4 border-t transition-colors duration-300", theme === 'dark' ? "border-white/5" : "border-zinc-100")}>
               <button 
                 onClick={() => setIsTaxExpanded(!isTaxExpanded)}
-                className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-[13px] font-medium"
+                className={cn("flex items-center gap-2 transition-colors text-[13px] font-medium", theme === 'dark' ? "text-zinc-400 hover:text-zinc-200" : "text-zinc-500 hover:text-zinc-900")}
               >
                 Personalise for my tax situation
                 <ChevronDown className={cn("w-4 h-4 transition-transform", isTaxExpanded && "rotate-180")} />
@@ -568,9 +568,15 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
           {/* TDS Warning Box */}
           <div>
             {taxDetails.isTDSApplicable ? (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-2 items-start">
+              <div className={cn(
+                "p-3 border rounded-lg flex gap-2 items-start transition-colors duration-300",
+                theme === 'dark' ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-50 border-amber-100"
+              )}>
                 <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                <p className={cn(
+                  "text-[11px] leading-relaxed transition-colors duration-300",
+                  theme === 'dark' ? "text-amber-200/80" : "text-amber-800"
+                )}>
                   Your annualized interest of {formatCurrency(taxDetails.annualInterest)} exceeds the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — your bank will deduct TDS at 10%.
                   {isTaxExpanded && taxSlab > 0 && (
                     <> TDS is deducted on gross interest before your income tax calculation. Your post-tax interest after your {taxSlab}% slab is {formatCurrency(taxDetails.postTaxInterest)}.</>
@@ -578,9 +584,15 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                 </p>
               </div>
             ) : (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex gap-2 items-start">
+              <div className={cn(
+                "p-3 border rounded-lg flex gap-2 items-start transition-colors duration-300",
+                theme === 'dark' ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-100"
+              )}>
                 <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                <p className={cn(
+                  "text-[11px] leading-relaxed transition-colors duration-300",
+                  theme === 'dark' ? "text-emerald-200/80" : "text-emerald-800"
+                )}>
                   Your annualized interest of {formatCurrency(taxDetails.annualInterest)} is below the {formatCurrency(taxDetails.threshold)} TDS threshold for {citizenType === 'Senior' ? 'Senior Citizen' : 'Regular Citizen'} — no TDS will be deducted by your bank.
                 </p>
               </div>
@@ -646,7 +658,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                       "text-xs uppercase tracking-wider font-semibold",
                       theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
                     )}>TDS Deducted</p>
-                    <p className="text-lg font-bold text-red-400">{formatCurrency(taxDetails.tdsDeducted)}</p>
+                    <p className="text-lg font-bold text-red-500">{formatCurrency(taxDetails.tdsDeducted)}</p>
                     <p className={cn(
                       "text-[10px]",
                       theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
@@ -661,7 +673,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                       "text-xs uppercase tracking-wider font-semibold",
                       theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
                     )}>Tax Payable at Slab</p>
-                    <p className="text-lg font-bold text-red-400">{formatCurrency(taxDetails.taxPayable)}</p>
+                    <p className="text-lg font-bold text-red-500">{formatCurrency(taxDetails.taxPayable)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -670,7 +682,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                       "text-xs uppercase tracking-wider font-semibold",
                       theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
                     )}>Post-Tax Interest</p>
-                    <p className="text-lg font-bold text-emerald-400">{formatCurrency(taxDetails.postTaxInterest)}</p>
+                    <p className="text-lg font-bold text-emerald-600">{formatCurrency(taxDetails.postTaxInterest)}</p>
                   </div>
                   <div className="space-y-1">
                     <p className={cn(
@@ -739,12 +751,12 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
                 <RechartsTooltip 
                   cursor={false}
                   contentStyle={{ 
-                    backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                    backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', 
                     border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
                     borderRadius: '8px', 
-                    color: theme === 'dark' ? '#fff' : '#18181b' 
+                    color: theme === 'dark' ? '#f4f4f5' : '#09090b' 
                   }}
-                  itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
+                  itemStyle={{ color: theme === 'dark' ? '#f4f4f5' : '#09090b' }}
                   formatter={(value: number) => [formatIndianRupees(value), '']}
                 />
               </PieChart>
@@ -766,7 +778,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
           </div>
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-zinc-600" />
+              <div className={cn("w-3 h-3 rounded-full", theme === 'dark' ? "bg-zinc-600" : "bg-zinc-400")} />
               <span className={cn(
                 "text-xs",
                 theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
@@ -781,7 +793,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
             </div>
             {isTaxExpanded && taxSlab > 0 && (
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-red-500" />
                 <span className={cn(
                   "text-xs",
                   theme === 'dark' ? "text-zinc-400" : "text-zinc-500"

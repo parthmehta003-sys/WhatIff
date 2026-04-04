@@ -328,7 +328,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
       {!isEmbedded && (
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
               <TrendingUp className="w-6 h-6 text-emerald-500" />
               SIP Calculator
             </h1>
@@ -337,7 +337,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
           <div className="flex items-center gap-2">
             <button 
               onClick={handleExport}
-              className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+              className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
               title="Export to Excel"
             >
               <Download className="w-5 h-5" />
@@ -352,7 +352,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             />
             <button 
               onClick={() => setIsShareOpen(true)}
-              className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+              className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             >
               <Share2 className="w-5 h-5" />
             </button>
@@ -412,49 +412,49 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
           )}>
             <div className="absolute top-4 right-6">
-              <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">NOMINAL VALUE</p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">NOMINAL VALUE</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Invested Amount</p>
-                <p className={cn("font-bold", isDark ? "text-white" : "text-zinc-900", isEmbedded ? "text-lg" : "text-xl")}>{formatCurrency(result.totalInvestment)}</p>
+                <p className={cn("font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900", isEmbedded ? "text-lg" : "text-xl")}>{formatCurrency(result.totalInvestment)}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Est. Returns</p>
-                <p className={cn("font-bold text-emerald-400", isEmbedded ? "text-lg" : "text-xl")}>+{formatCurrency(result.totalEarnings)}</p>
+                <p className={cn("font-bold text-emerald-600", isEmbedded ? "text-lg" : "text-xl")}>+{formatCurrency(result.totalEarnings)}</p>
               </div>
             </div>
-            <div className={cn("pt-6 border-t", isDark ? "border-white/5" : "border-zinc-100")}>
+            <div className={cn("pt-6 border-t transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-100")}>
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Total Value</p>
-              <p className={cn("font-bold", isDark ? "text-white" : "text-zinc-900", isEmbedded ? "text-2xl" : "text-4xl")}>{formatCurrency(result.futureValue)}</p>
+              <p className={cn("font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900", isEmbedded ? "text-2xl" : "text-4xl")}>{formatCurrency(result.futureValue)}</p>
             </div>
           </div>
 
           {/* Real Results Card (Inflation Adjusted) */}
           <div className={cn(
             "p-8 space-y-6 flex flex-col w-full rounded-2xl border relative transition-colors duration-300",
-            isDark ? "bg-amber-400/[0.03] border-amber-400/20" : "bg-amber-50/50 border-amber-200 shadow-sm"
+            isDark ? "bg-amber-500/10 border-amber-500/20" : "bg-amber-50 border-amber-100 shadow-sm"
           )}>
             <div className="absolute top-4 right-6">
-              <p className="text-[10px] text-amber-400 uppercase font-bold tracking-widest">IN TODAY'S MONEY</p>
+              <p className="text-[10px] text-amber-600 uppercase font-bold tracking-widest">IN TODAY'S MONEY</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Purchasing Power Lost</p>
-                <p className={cn("font-bold text-amber-400", isEmbedded ? "text-lg" : "text-xl")}>{formatCurrency(result.purchasingPowerLost)}</p>
+                <p className={cn("font-bold text-amber-600", isEmbedded ? "text-lg" : "text-xl")}>{formatCurrency(result.purchasingPowerLost)}</p>
                 <p className="text-[10px] text-zinc-500">Eroded by 6% annual inflation</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Real Returns</p>
-                <p className={cn("font-bold", result.realReturns >= 0 ? "text-emerald-400" : "text-red-400", isEmbedded ? "text-lg" : "text-xl")}>
+                <p className={cn("font-bold", result.realReturns >= 0 ? "text-emerald-600" : "text-red-600", isEmbedded ? "text-lg" : "text-xl")}>
                   {result.realReturns >= 0 ? '+' : ''}{formatCurrency(result.realReturns)}
                 </p>
                 <p className="text-[10px] text-zinc-500">Actual gain above inflation</p>
               </div>
             </div>
-            <div className={cn("pt-6 border-t", isDark ? "border-amber-400/10" : "border-amber-200/50")}>
+            <div className={cn("pt-6 border-t transition-colors duration-300", isDark ? "border-amber-200/20" : "border-amber-200")}>
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Real Corpus</p>
-              <p className={cn("font-bold text-emerald-400", isEmbedded ? "text-2xl" : "text-4xl")}>{formatCurrency(result.realCorpus)}</p>
+              <p className={cn("font-bold text-emerald-600", isEmbedded ? "text-2xl" : "text-4xl")}>{formatCurrency(result.realCorpus)}</p>
               <p className="text-[10px] text-zinc-500 mt-1">What {formatCurrency(result.futureValue)} will buy at today's prices</p>
             </div>
           </div>
@@ -482,7 +482,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             "glass-card p-6 min-w-0 transition-colors duration-300",
             isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
           )}>
-            <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">Growth Projection</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Growth Projection</h3>
             <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
               {chartReady && (
                 <ResponsiveContainer width="100%" height="100%">
@@ -496,14 +496,14 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                     <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                     <XAxis 
                       dataKey="year" 
-                      stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                      stroke="#a1a1aa" 
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false}
-                      label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
+                      label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: '#a1a1aa', fontSize: 10 }}
                     />
                     <YAxis 
-                      stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                      stroke="#a1a1aa" 
                       fontSize={10} 
                       tickLine={false} 
                       axisLine={false}
@@ -512,11 +512,11 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                        border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                         borderRadius: '8px',
-                        color: isDark ? '#ffffff' : '#09090b'
+                        color: isDark ? '#f4f4f5' : '#09090b'
                       }}
-                      itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                      itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                       formatter={(value: number, name: string) => {
                         const label = name === 'balance' ? 'Total Value' : 
                                     name === 'investment' ? 'Invested Amount' : 
@@ -526,6 +526,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                       labelFormatter={(label) => `Year ${label}`}
                     />
                     <Area 
+                      isAnimationActive={false}
                       type="monotone" 
                       dataKey="balance" 
                       stroke="#10b981" 
@@ -535,6 +536,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                       name="balance"
                     />
                     <Area 
+                      isAnimationActive={false}
                       type="monotone" 
                       dataKey="realBalance" 
                       stroke="#fbbf24" 
@@ -544,9 +546,10 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                       name="realBalance"
                     />
                     <Area 
+                      isAnimationActive={false}
                       type="monotone" 
                       dataKey="investment" 
-                      stroke="#3f3f46" 
+                      stroke="#a1a1aa" 
                       strokeWidth={2}
                       fill="transparent"
                       name="investment"
@@ -562,7 +565,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             "glass-card p-6 min-w-0 transition-colors duration-300",
             isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
           )}>
-            <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">Wealth Breakdown</h3>
+            <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Wealth Breakdown</h3>
             <div className="h-[300px] w-full relative flex items-center justify-center" style={{ minWidth: 0, minHeight: 300 }}>
               {chartReady && (
                 <ResponsiveContainer width="100%" height="100%">
@@ -581,17 +584,17 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
                       dataKey="value"
                       stroke="none"
                     >
-                      <Cell fill={isDark ? "#52525b" : "#e4e4e7"} />
+                      <Cell fill={isDark ? "#3f3f46" : "#e4e4e7"} />
                       <Cell fill="#10b981" />
                       <Cell fill="#fbbf24" />
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                        border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                         borderRadius: '8px' 
                       }}
-                      itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                      itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                       formatter={(value: number) => [formatCurrency(value), '']}
                     />
                   </PieChart>
@@ -606,16 +609,16 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             </div>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-zinc-600" />
-                <span className="text-[11px] text-zinc-400">Principal: {formatCurrency(results.totalInvested)}</span>
+                <div className={cn("w-3 h-3 rounded-full", isDark ? "bg-zinc-600" : "bg-zinc-400")} />
+                <span className="text-[11px] text-zinc-500">Principal: {formatCurrency(results.totalInvested)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-[11px] text-zinc-400">Real Gain: {formatCurrency(results.realWealthCreated)}</span>
+                <span className="text-[11px] text-zinc-500">Real Gain: {formatCurrency(results.realWealthCreated)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="text-[11px] text-zinc-400">Lost to Inflation: {formatCurrency(results.purchasingPowerLost)}</span>
+                <span className="text-[11px] text-zinc-500">Lost to Inflation: {formatCurrency(results.purchasingPowerLost)}</span>
               </div>
             </div>
           </div>
@@ -646,6 +649,33 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
         questionCount={questionCount}
         maxQuestions={MAX_QUESTIONS}
       />
+
+      {/* Nudge Card */}
+      {!isEmbedded && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className={cn(
+            "glass-card p-6 mb-8 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
+            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+          )}
+          onClick={() => onNavigate('prepay_vs_invest')}
+        >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-purple-500/10" : "bg-purple-100")}>
+                  <ArrowUpRight className="w-6 h-6 text-purple-500" />
+                </div>
+                <div>
+                  <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900 group-hover:text-purple-600")}>💡 Prepay vs Invest</h3>
+                  <p className="text-xs text-zinc-500">Have a loan? See if you should invest this SIP or prepay your loan.</p>
+                </div>
+              </div>
+              <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+            </div>
+        </motion.div>
+      )}
 
       {/* Investment Platforms */}
       {!isEmbedded && <InvestmentBrokerSection />}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -24,6 +24,7 @@ import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import { Screen } from '../../App';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 import SliderWithInput from '../SliderWithInput';
 
@@ -100,6 +101,8 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
 };
 
 export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: HomePurchaseCalculatorProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [price, setPrice] = useState(10000000);
   const [salary, setSalary] = useState(150000);
   const [savings, setSavings] = useState(500000);
@@ -280,7 +283,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <Home className="w-6 h-6 text-blue-500" />
             Home Purchase Readiness
           </h1>
@@ -289,7 +292,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -307,7 +310,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -324,7 +327,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
               "px-4 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-all",
               city === c.name 
                 ? "bg-blue-500 border-blue-500 text-white" 
-                : "bg-zinc-900 border-white/10 text-zinc-400 hover:border-white/20"
+                : isDark ? "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20" : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 shadow-sm"
             )}
           >
             {c.name}
@@ -342,7 +345,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
             className="space-y-8"
           >
             {/* Main Inputs Card */}
-            <div className="glass-card p-6 space-y-8">
+            <div className={cn("glass-card p-6 space-y-8 transition-colors duration-300", isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm")}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <SliderWithInput
@@ -380,28 +383,28 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                 </div>
 
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                  <div className={cn("p-4 rounded-xl border space-y-1 transition-colors duration-300", isDark ? "bg-white/5 border-white/5" : "bg-zinc-50 border-zinc-100")}>
                     <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Down Payment (20%)</p>
-                    <p className="text-2xl font-bold text-white">{fmt(animDown)}</p>
+                    <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{fmt(animDown)}</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                  <div className={cn("p-4 rounded-xl border space-y-1 transition-colors duration-300", isDark ? "bg-white/5 border-white/5" : "bg-zinc-50 border-zinc-100")}>
                     <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Estimated Monthly EMI</p>
-                    <p className="text-2xl font-bold text-white">{fmtK(animEMI)}</p>
+                    <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{fmtK(animEMI)}</p>
                     <p className="text-[10px] text-zinc-500">{TENURE_YEARS} years @ {RATE}%</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-1">
+                  <div className={cn("p-4 rounded-xl border space-y-1 transition-colors duration-300", isDark ? "bg-blue-500/10 border-blue-500/20" : "bg-blue-50 border-blue-100")}>
                     <p className="text-xs text-blue-500 uppercase tracking-wider font-semibold">Min. Salary Required</p>
-                    <p className="text-2xl font-bold text-blue-400">{fmt(animSalary)}</p>
+                    <p className="text-2xl font-bold text-blue-600">{fmt(animSalary)}</p>
                   </div>
                 </div>
               </div>
 
               {/* Status Banner */}
               <div className={cn(
-                "p-4 rounded-xl border flex gap-4 items-center",
-                checkColor === 'green' ? "bg-emerald-500/10 border-emerald-500/20" :
-                checkColor === 'yellow' ? "bg-yellow-500/10 border-yellow-500/20" :
-                "bg-red-500/10 border-red-500/20"
+                "p-4 rounded-xl border flex gap-4 items-center transition-colors duration-300",
+                checkColor === 'green' ? (isDark ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200") :
+                checkColor === 'yellow' ? (isDark ? "bg-yellow-500/10 border-yellow-500/20" : "bg-yellow-50 border-yellow-200") :
+                (isDark ? "bg-red-500/10 border-red-500/20" : "bg-red-50 border-red-200")
               )}>
                 <div className="shrink-0">
                   {checkColor === 'green' ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> :
@@ -410,13 +413,13 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                 </div>
                 <div className="text-sm">
                   {qualifies ? (
-                    <p className="text-zinc-300">
-                      Your salary qualifies. EMI will be <span className="text-white font-bold">{Math.round((monthlyEMI / salary) * 100)}% of income</span>.
+                    <p className="text-zinc-500">
+                      Your salary qualifies. EMI will be <span className={cn("font-bold", isDark ? "text-white" : "text-zinc-900")}>{Math.round((monthlyEMI / salary) * 100)}% of income</span>.
                       {hasSavingsGap && <span className="block mt-1">However, you still need {fmt(savingsGap)} for the down payment.</span>}
                     </p>
                   ) : (
-                    <p className="text-zinc-300">
-                      Salary gap of <span className="text-white font-bold">{fmt(salaryGap)}/month</span>. At your current income, EMI would be {Math.round((monthlyEMI / salary) * 100)}% of take-home.
+                    <p className="text-zinc-500">
+                      Salary gap of <span className={cn("font-bold", isDark ? "text-white" : "text-zinc-900")}>{fmt(salaryGap)}/month</span>. At your current income, EMI would be {Math.round((monthlyEMI / salary) * 100)}% of take-home.
                     </p>
                   )}
                 </div>
@@ -427,9 +430,9 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
                     <p className="text-xs text-zinc-500 font-medium">Down payment progress</p>
-                    <span className="text-sm font-bold text-white">{pct}%</span>
+                    <span className={cn("text-sm font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{pct}%</span>
                   </div>
-                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className={cn("h-2 rounded-full overflow-hidden transition-colors duration-300", isDark ? "bg-white/5" : "bg-zinc-100")}>
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
@@ -447,14 +450,14 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
             key="goal-planner"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card p-6 space-y-8"
+            className={cn("glass-card p-6 space-y-8 transition-colors duration-300", isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm")}
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Goal Planner</h3>
+                <h3 className={cn("text-lg font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>Goal Planner</h3>
                 <p className="text-xs text-zinc-500">Pre-filled from Dream Home</p>
               </div>
             </div>
@@ -471,25 +474,25 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                 accentColor="blue"
               />
 
-              <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-6">
+              <div className={cn("border rounded-2xl p-6 space-y-6 transition-colors duration-300", isDark ? "bg-zinc-900/50 border-white/5" : "bg-zinc-50 border-zinc-100")}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">SIP Needed</p>
-                    <p className="text-2xl font-bold text-white">{fmtK(animSIP)}<span className="text-xs font-normal text-zinc-500 ml-1">/mo</span></p>
+                    <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{fmtK(animSIP)}<span className="text-xs font-normal text-zinc-500 ml-1">/mo</span></p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Target</p>
-                    <p className="text-2xl font-bold text-white">{fmt(savingsGap)}</p>
+                    <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{fmt(savingsGap)}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Timeline</p>
-                    <p className="text-2xl font-bold text-white">{yearsToGoal} yrs</p>
+                    <p className={cn("text-2xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{yearsToGoal} yrs</p>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-white/5">
-                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    💡 Invest <span className="text-white font-bold">{fmtK(Math.round(sipNeeded))}/month</span> in a mutual fund SIP for {yearsToGoal} years at 12% returns to have <span className="text-white font-bold">{fmt(savingsGap)}</span> ready for your {city} down payment.
+                <div className={cn("pt-6 border-t transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-200")}>
+                  <p className="text-sm text-zinc-500 leading-relaxed">
+                    💡 Invest <span className={cn("font-bold", isDark ? "text-white" : "text-zinc-900")}>{fmtK(Math.round(sipNeeded))}/month</span> in a mutual fund SIP for {yearsToGoal} years at 12% returns to have <span className={cn("font-bold", isDark ? "text-white" : "text-zinc-900")}>{fmt(savingsGap)}</span> ready for your {city} down payment.
                   </p>
                 </div>
 
@@ -518,7 +521,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
 
             <button 
               onClick={() => setShowGoalPlanner(false)}
-              className="w-full py-3 text-zinc-500 hover:text-white text-xs font-medium transition-colors"
+              className="w-full py-3 text-zinc-500 hover:text-blue-500 text-xs font-medium transition-colors"
             >
               ← Back to Home Details
             </button>
@@ -531,13 +534,16 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-card p-8 text-center space-y-6 bg-emerald-500/5 border-emerald-500/10"
+          className={cn(
+            "glass-card p-8 text-center space-y-6 transition-colors duration-300",
+            isDark ? "bg-emerald-500/5 border-emerald-500/10" : "bg-emerald-50 border-emerald-100 shadow-sm"
+          )}
         >
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8 text-emerald-500" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Down payment covered!</h3>
+            <h3 className={cn("text-xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>Down payment covered!</h3>
             <p className="text-sm text-zinc-500">
               Your savings of {fmt(savings)} exceed the {fmt(downPayment)} required. Focus on EMI affordability.
             </p>
@@ -548,7 +554,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Price Breakdown Chart */}
-        <div className="p-6 min-w-0 border border-white/10 rounded-2xl bg-transparent">
+        <div className={cn("p-6 min-w-0 border rounded-2xl bg-transparent transition-colors duration-300", isDark ? "border-white/10" : "border-zinc-200 shadow-sm bg-white")}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">Property Price Breakdown</h3>
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
@@ -563,7 +569,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                   ]}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
@@ -579,13 +585,17 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                   />
                   <Tooltip 
                     cursor={false}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                      border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px' 
+                    }}
+                    itemStyle={{ color: isDark ? '#fff' : '#09090b' }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                   />
                   <Legend verticalAlign="top" align="center" height={48} iconType="circle" />
                   <Bar dataKey="Down Payment" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={60} />
-                  <Bar dataKey="Loan Amount" stackId="a" fill="#52525b" radius={[0, 0, 0, 0]} barSize={60} />
+                  <Bar dataKey="Loan Amount" stackId="a" fill={isDark ? "#52525b" : "#e4e4e7"} radius={[0, 0, 0, 0]} barSize={60} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -593,7 +603,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
         </div>
 
         {/* Amortization Chart */}
-        <div className="p-6 min-w-0 border border-white/10 rounded-2xl bg-transparent">
+        <div className={cn("p-6 min-w-0 border rounded-2xl bg-transparent transition-colors duration-300", isDark ? "border-white/10" : "border-zinc-200 shadow-sm bg-white")}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">EMI Amortization</h3>
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
@@ -605,7 +615,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="year" 
                     stroke="#52525b" 
@@ -623,8 +633,12 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                   />
                   <Tooltip 
                     cursor={false}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                      border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      borderRadius: '8px' 
+                    }}
+                    itemStyle={{ color: isDark ? '#fff' : '#09090b' }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                     labelFormatter={(label) => `Year ${label}`}
                   />
@@ -643,8 +657,8 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
                     dataKey="interest" 
                     name="Interest Component"
                     stackId="1"
-                    stroke="#52525b" 
-                    fill="#52525b"
+                    stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                    fill={isDark ? "#52525b" : "#e4e4e7"}
                     fillOpacity={0.5}
                   />
                 </AreaChart>
@@ -670,14 +684,17 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
           {/* Goal Planner Card */}
           <button 
             onClick={() => onNavigate('goal', { targetAmount: downPayment })}
-            className="glass-card p-6 text-left hover:bg-white/5 transition-all border-l-4 border-l-emerald-500 flex flex-col justify-between group"
+            className={cn(
+              "glass-card p-6 text-left transition-all border-l-4 border-l-emerald-500 flex flex-col justify-between group",
+              isDark ? "hover:bg-white/5 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+            )}
           >
             <div className="space-y-4">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <Target className="w-5 h-5 text-emerald-500" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-white group-hover:text-emerald-400 transition-colors">Save for Down Payment</h4>
+                <h4 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-emerald-400" : "text-zinc-900 group-hover:text-emerald-600")}>Save for Down Payment</h4>
                 <p className="text-xs text-zinc-500">How much do you need to save monthly to afford this home?</p>
               </div>
             </div>
@@ -694,19 +711,44 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
               loanRate: RATE, 
               tenureYears: TENURE_YEARS 
             })}
-            className="glass-card p-6 text-left hover:bg-white/5 transition-all border-l-4 border-l-emerald-500 flex flex-col justify-between group"
+            className={cn(
+              "glass-card p-6 text-left transition-all border-l-4 border-l-emerald-500 flex flex-col justify-between group",
+              isDark ? "hover:bg-white/5 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+            )}
           >
             <div className="space-y-4">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-emerald-500" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-white group-hover:text-emerald-400 transition-colors">Buy vs Rent</h4>
+                <h4 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-emerald-400" : "text-zinc-900 group-hover:text-emerald-600")}>Buy vs Rent</h4>
                 <p className="text-xs text-zinc-500">Is buying actually better than renting and investing the difference?</p>
               </div>
             </div>
             <div className="mt-6 text-xs font-bold text-emerald-500 flex items-center gap-1">
               Compare Now <ArrowRight className="w-3 h-3" />
+            </div>
+          </button>
+
+          {/* Prepay vs Invest Card */}
+          <button 
+            onClick={() => onNavigate('prepay_vs_invest')}
+            className={cn(
+              "glass-card p-6 text-left transition-all border-l-4 border-l-purple-500 flex flex-col justify-between group",
+              isDark ? "hover:bg-white/5 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+            )}
+          >
+            <div className="space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <ArrowUpRight className="w-5 h-5 text-purple-500" />
+              </div>
+              <div className="space-y-1">
+                <h4 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900 group-hover:text-purple-600")}>Prepay vs Invest</h4>
+                <p className="text-xs text-zinc-500">Have extra cash? See if you should prepay your loan or invest it.</p>
+              </div>
+            </div>
+            <div className="mt-6 text-xs font-bold text-purple-500 flex items-center gap-1">
+              Check Now <ArrowRight className="w-3 h-3" />
             </div>
           </button>
 

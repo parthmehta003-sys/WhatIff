@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useContext } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   PieChart, 
@@ -24,6 +24,7 @@ import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface LoanAffordabilityProps {
   onBack: () => void;
@@ -49,6 +50,8 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
 };
 
 export default function LoanAffordability({ onBack, onAskAI }: LoanAffordabilityProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [monthlyIncome, setMonthlyIncome] = useState(100000);
   const [existingEMI, setExistingEMI] = useState(0);
   const [interestRate, setInterestRate] = useState(8.5);
@@ -190,7 +193,7 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
       </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <ShieldCheck className="w-6 h-6 text-purple-500" />
             Loan Affordability
           </h1>
@@ -199,7 +202,7 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -214,7 +217,7 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -265,15 +268,18 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
         </div>
 
         {/* Results Card */}
-        <div className="glass-card p-8 space-y-8 flex flex-col w-full h-full">
+        <div className={cn(
+          "glass-card p-8 space-y-8 flex flex-col w-full h-full transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <div className="space-y-1">
             <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Max Loan Eligibility</p>
-            <p className="text-4xl font-bold text-white">{formatCurrency(result.maxLoan)}</p>
+            <p className={cn("text-4xl font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(result.maxLoan)}</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5">
+          <div className={cn("grid grid-cols-2 gap-4 pt-6 border-t transition-colors duration-300", isDark ? "border-white/5" : "border-zinc-100")}>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Safe Monthly EMI</p>
-              <p className="text-lg font-bold text-white">{formatCurrency(result.availableEMI)}</p>
+              <p className={cn("text-lg font-bold transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(result.availableEMI)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Risk Level</p>
@@ -295,7 +301,10 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Donut Chart */}
-        <div className="glass-card p-6 min-w-0">
+        <div className={cn(
+          "glass-card p-6 min-w-0 transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">Income Allocation</h3>
           <div className="h-[300px] w-full relative flex items-center justify-center" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
@@ -313,18 +322,22 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
                   >
                     <Cell fill="#f59e0b" />
                     <Cell fill="#10b981" />
-                    <Cell fill="#52525b" />
+                    <Cell fill={isDark ? "#27272a" : "#e4e4e7"} />
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                      border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
+                      borderRadius: '8px' 
+                    }}
+                    itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                   />
                 </PieChart>
               </ResponsiveContainer>
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className="text-3xl font-bold text-emerald-400">
+              <p className="text-3xl font-bold text-emerald-600">
                 {safeBorrowingPct}%
               </p>
               <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Total Debt Ratio</p>
@@ -333,21 +346,24 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
           <div className="flex justify-center flex-wrap gap-4 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Existing EMIs</span>
+              <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Existing EMIs</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">New Capacity</span>
+              <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">New Capacity</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-zinc-600" />
-              <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Remaining</span>
+              <div className="w-3 h-3 rounded-full bg-zinc-400" />
+              <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Remaining</span>
             </div>
           </div>
         </div>
 
         {/* Bar Chart */}
-        <div className="glass-card p-6 min-w-0">
+        <div className={cn(
+          "glass-card p-6 min-w-0 transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">EMI Obligations</h3>
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
@@ -359,27 +375,31 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
                   ]}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#71717a', fontSize: 12 }}
+                    tick={{ fill: '#a1a1aa', fontSize: 12 }}
                   />
                   <YAxis 
-                    stroke="#52525b" 
+                    stroke="#a1a1aa" 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
                     tickFormatter={(val) => formatCompactNumber(val)}
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ 
+                      backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                      border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
+                      borderRadius: '8px' 
+                    }}
+                    itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                     cursor={{ fill: 'transparent' }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                   />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={60}>
+                  <Bar isAnimationActive={false} dataKey="value" radius={[4, 4, 0, 0]} barSize={60}>
                     <Cell fill="#f59e0b" />
                     <Cell fill="#10b981" />
                   </Bar>
@@ -390,12 +410,15 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
         </div>
       </div>
 
-      <div className="glass-card p-6 space-y-4">
-        <div className="flex items-center gap-2 text-purple-500">
+      <div className={cn(
+        "glass-card p-6 space-y-4 transition-colors duration-300",
+        isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+      )}>
+        <div className="flex items-center gap-2 text-purple-600">
           <AlertCircle className="w-5 h-5" />
           <h3 className="font-bold">Affordability Analysis</h3>
         </div>
-        <p className="text-sm text-zinc-400 leading-relaxed">
+        <p className={cn("text-sm leading-relaxed transition-colors duration-300", isDark ? "text-zinc-300" : "text-zinc-600")}>
           {result.riskLevel === 'Safe' ? 'You are well within safe borrowing limits. Lenders will likely approve your application quickly.' : 
            result.riskLevel === 'Moderate' ? 'Your debt levels are manageable but approach with caution. Consider a longer tenure.' : 
            'High debt-to-income ratio. Banks may reject your application or charge higher interest rates.'}

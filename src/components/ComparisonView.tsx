@@ -44,6 +44,7 @@ const typeDisplayNames: Record<string, string> = {
   'retirement': 'Retirement',
   'affordability': 'Loan Affordability',
   'home_purchase': 'Home Purchase',
+  'prepay_vs_invest': 'Prepay vs Invest',
 };
 
 const typeIcons = {
@@ -53,6 +54,7 @@ const typeIcons = {
   retirement: Palmtree,
   affordability: ShieldCheck,
   home_purchase: Home,
+  prepay_vs_invest: ArrowUpRight,
   staggered_fd: TrendingUp,
   buy_vs_rent: Home,
 };
@@ -64,6 +66,7 @@ const typeColors = {
   retirement: 'text-orange-500',
   affordability: 'text-emerald-500',
   home_purchase: 'text-blue-400',
+  prepay_vs_invest: 'text-purple-500',
   staggered_fd: 'text-emerald-500',
   buy_vs_rent: 'text-emerald-500',
 };

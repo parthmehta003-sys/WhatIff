@@ -39,11 +39,12 @@ import HomePurchaseCalculator from './components/calculators/HomePurchaseCalcula
 import StaggeredFDPlanner from './components/calculators/StaggeredFDPlanner';
 import BasicFDCalculator from './components/calculators/BasicFDCalculator';
 import BuyVsRentCalculator from './components/calculators/BuyVsRentCalculator';
+import PrepayVsInvest from './components/calculators/PrepayVsInvest';
 import ComparisonView from './components/ComparisonView';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfUse from './components/TermsOfUse';
 
-export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'comparison' | 'privacy' | 'terms';
+export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'prepay_vs_invest' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'comparison' | 'privacy' | 'terms';
 
 const screenToPath: Record<Screen, string> = {
   landing: '/',
@@ -54,6 +55,7 @@ const screenToPath: Record<Screen, string> = {
   retirement: '/retirement-calculator',
   affordability: '/loan-affordability',
   home_purchase: '/home-purchase',
+  prepay_vs_invest: '/prepay-vs-invest',
   staggered_fd: '/staggered-fd-calculator',
   basic_fd: '/fd-calculator',
   buy_vs_rent: '/buy-vs-rent',
@@ -219,6 +221,7 @@ export default function App() {
                   <Route path="/retirement-calculator" element={<RetirementCalculator onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
                   <Route path="/loan-affordability" element={<LoanAffordability onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
                   <Route path="/home-purchase" element={<HomePurchaseCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
+                  <Route path="/prepay-vs-invest" element={<PrepayVsInvest onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/staggered-fd-calculator" element={<StaggeredFDPlanner onBack={() => navigate('/dashboard')} initialPrincipal={location.state?.principal} onAskAI={openChat} />} />
                   <Route path="/fd-calculator" element={<BasicFDCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/buy-vs-rent" element={<BuyVsRentCalculator onBack={() => navigate('/dashboard')} initialData={location.state} onAskAI={openChat} />} />

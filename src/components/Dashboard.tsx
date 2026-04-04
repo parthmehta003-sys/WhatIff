@@ -102,6 +102,15 @@ const calculators = [
     tag: 'Buy',
   },
   {
+    id: 'prepay_vs_invest' as Screen,
+    name: 'Prepay vs Invest',
+    description: 'Have a loan? should you invest this SIP or prepay your loan.',
+    icon: ArrowUpRight,
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/10',
+    tag: 'Borrow',
+  },
+  {
     id: 'buy_vs_rent' as Screen,
     name: 'Buy vs Rent',
     description: 'Is buying actually better than renting and investing the difference?',
@@ -266,55 +275,17 @@ export default function Dashboard({ onNavigate, onCompare }: DashboardProps) {
 
   return (
     <div className="relative min-h-screen">
-      {/* Background Animation */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <canvas 
-          ref={canvasRef} 
-          className="absolute inset-0 w-full h-full"
-        />
-        <div 
-          className="absolute inset-0"
-          style={{ 
-            background: 'radial-gradient(circle at center, rgba(9,9,11,0.3) 0%, rgba(9,9,11,0.85) 100%)'
-          }}
-        />
-      </div>
-
       <div className="relative z-10 space-y-12">
-        {/* Hero Section */}
-        <section className="text-center space-y-2 pt-8 pb-12 relative">
-          <div className="space-y-10">
-            <TypewriterText 
-              text1="Know your numbers." 
-              text2="Own your future." 
-              onComplete={() => setShowPills(true)}
-            />
-          </div>
-        </section>
-
-      {/* Hero Image Section */}
-      <div className="relative w-full overflow-hidden -my-4">
-        <div 
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ 
-            background: `
-              linear-gradient(to bottom, transparent 60%, #09090b 100%),
-              linear-gradient(to top, transparent 70%, #09090b 100%)
-            ` 
-          }}
-        />
-        <img 
-          src="/crystal-tree.png" 
-          alt="Crystal Tree" 
-          className="w-full h-[55vh] md:h-[45vh] object-cover object-center block"
-          referrerPolicy="no-referrer"
-          decoding="async"
-          fetchPriority="high"
-          width="1920"
-          height="1080"
-          onError={(e) => e.currentTarget.style.display = 'none'}
-        />
-      </div>
+      {/* Hero Section */}
+      <section className="text-center space-y-2 pt-8 pb-12 relative">
+        <div className="space-y-10">
+          <TypewriterText 
+            text1="Know your numbers." 
+            text2="Own your future." 
+            onComplete={() => setShowPills(true)}
+          />
+        </div>
+      </section>
 
       {/* Calculators Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -455,4 +455,175 @@ export function calculateRequiredSIP(
   return Math.round(sip);
 }
 
+export interface PrepayVsInvestResult {
+  emi: number;
+  monthsToClose: number;
+  newTenureYears: number;
+  monthsSaved: number;
+  yearsSaved: number;
+  interestSaved: number;
+  scenarioA: {
+    fvEMI: number;
+    interestSaved: number;
+    taxLost: number;
+    wealth: number;
+  };
+  scenarioB: {
+    fvSIP: number;
+    taxSaved: number;
+    wealth: number;
+    isTaxReinvested: boolean;
+  };
+  netAdvantage: number;
+  winner: 'prepay' | 'invest';
+}
+
+export function calculatePrepayVsInvest(
+  loanAmount: number,
+  rate: number,
+  tenure: number,
+  extraAmount: number,
+  sipReturn: number,
+  taxBracket: number,
+  isOldRegime: boolean = true,
+  isELSS: boolean = false,
+  is80CUsed: boolean = false,
+  reinvestTaxSavings: boolean = true
+): PrepayVsInvestResult {
+  const monthlyRate = rate / 100 / 12;
+  const totalMonths = tenure * 12;
+  const emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths) /
+              (Math.pow(1 + monthlyRate, totalMonths) - 1);
+  const taxRate = taxBracket / 100;
+
+  // Baseline simulation (No Prepayment)
+  let balanceBaseline = loanAmount;
+  let totalInterestPaidBaseline = 0;
+  let totalTaxBenefitBaseline = 0;
+  let currentYearInterestBaseline = 0;
+
+  for (let m = 1; m <= totalMonths; m++) {
+    const interestThisMonth = balanceBaseline * monthlyRate;
+    const principalThisMonth = emi - interestThisMonth;
+    totalInterestPaidBaseline += interestThisMonth;
+    currentYearInterestBaseline += interestThisMonth;
+    balanceBaseline -= principalThisMonth;
+    balanceBaseline = Math.max(0, balanceBaseline);
+
+    if (m % 12 === 0 || balanceBaseline <= 0 || m === totalMonths) {
+      if (isOldRegime) {
+        totalTaxBenefitBaseline += Math.min(currentYearInterestBaseline, 200000) * taxRate;
+      }
+      currentYearInterestBaseline = 0;
+      if (balanceBaseline <= 0) break;
+    }
+  }
+
+  // Prepayment simulation (Scenario A)
+  let balancePrepay = loanAmount;
+  let totalInterestPaidA = 0;
+  let monthsToClose = 0;
+  let totalTaxBenefitPrepay = 0;
+  let currentYearInterestPrepay = 0;
+
+  while (balancePrepay > 0 && monthsToClose < totalMonths) {
+    monthsToClose++;
+    const interestThisMonth = balancePrepay * monthlyRate;
+    const principalThisMonth = emi - interestThisMonth;
+    totalInterestPaidA += interestThisMonth;
+    currentYearInterestPrepay += interestThisMonth;
+    balancePrepay -= (principalThisMonth + extraAmount);
+    balancePrepay = Math.max(0, balancePrepay);
+
+    if (monthsToClose % 12 === 0 || balancePrepay <= 0) {
+      if (isOldRegime) {
+        totalTaxBenefitPrepay += Math.min(currentYearInterestPrepay, 200000) * taxRate;
+      }
+      currentYearInterestPrepay = 0;
+    }
+  }
+
+  const interestSaved = totalInterestPaidBaseline - totalInterestPaidA;
+  const monthsSaved = totalMonths - monthsToClose;
+  const yearsSaved = monthsSaved / 12;
+  const newTenureYears = monthsToClose / 12;
+
+  // Scenario A: Prepayment Path
+  const m = totalMonths - monthsToClose; // Remaining months
+  const r_inv = sipReturn / 100 / 12;
+  
+  // FV_EMI = EMI * [((1+r_inv)^m - 1) / r_inv]
+  let fvEMI = 0;
+  if (m > 0) {
+    if (r_inv > 0) {
+      fvEMI = emi * (Math.pow(1 + r_inv, m) - 1) / r_inv;
+    } else {
+      fvEMI = emi * m;
+    }
+  }
+
+  const taxLost = isOldRegime ? Math.max(0, totalTaxBenefitBaseline - totalTaxBenefitPrepay) : 0;
+  const wealthA = fvEMI + interestSaved - taxLost;
+
+  // Scenario B: Investment Path
+  // FV_SIP = SIP * [((1+r_inv)^n - 1) / r_inv]
+  let fvSIP = 0;
+  if (r_inv > 0) {
+    fvSIP = extraAmount * (Math.pow(1 + r_inv, totalMonths) - 1) / r_inv;
+  } else {
+    fvSIP = extraAmount * totalMonths;
+  }
+
+  let annualTaxSaved = 0;
+  if (isOldRegime && isELSS && !is80CUsed) {
+    const annualSIP = extraAmount * 12;
+    const eligibleInvestment = Math.min(annualSIP, 150000);
+    annualTaxSaved = eligibleInvestment * taxRate;
+  }
+
+  let totalTaxBenefit = 0;
+  const canClaimTaxBenefit = isOldRegime && isELSS && !is80CUsed;
+  
+  if (canClaimTaxBenefit && reinvestTaxSavings && annualTaxSaved > 0) {
+    const monthlyTaxSIP = annualTaxSaved / 12;
+    if (r_inv > 0) {
+      totalTaxBenefit = monthlyTaxSIP * (Math.pow(1 + r_inv, totalMonths) - 1) / r_inv;
+    } else {
+      totalTaxBenefit = monthlyTaxSIP * totalMonths;
+    }
+  } else if (canClaimTaxBenefit) {
+    totalTaxBenefit = annualTaxSaved * tenure;
+  }
+
+  const wealthB = fvSIP + totalTaxBenefit;
+
+  const netAdvantage = wealthB - wealthA;
+
+  return {
+    emi: Math.round(emi),
+    monthsToClose,
+    newTenureYears,
+    monthsSaved,
+    yearsSaved,
+    interestSaved,
+    scenarioA: {
+      fvEMI: Math.round(fvEMI),
+      interestSaved: Math.round(interestSaved),
+      taxLost: Math.round(taxLost),
+      wealth: Math.round(wealthA)
+    },
+    scenarioB: {
+      fvSIP: Math.round(fvSIP),
+      taxSaved: Math.round(totalTaxBenefit),
+      wealth: Math.round(wealthB),
+      isTaxReinvested: canClaimTaxBenefit && reinvestTaxSavings && annualTaxSaved > 0
+    },
+    netAdvantage: Math.round(netAdvantage),
+    winner: netAdvantage > 0 ? 'invest' : 'prepay'
+  };
+}
+
+
+
+
 

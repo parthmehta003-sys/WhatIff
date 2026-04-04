@@ -364,7 +364,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
       </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <Target className="w-6 h-6 text-emerald-500" />
             Goal Planner
           </h1>
@@ -373,7 +373,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -390,7 +390,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -401,26 +401,29 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
         {/* Controls */}
         <div className="space-y-6 w-full">
           {isOverInvesting && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-amber-500">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-600">
                 <Info className="w-4 h-4" />
                 <p className="text-sm font-bold uppercase tracking-wider">Over-Investing Detected</p>
               </div>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Your monthly SIP of <span className="text-white font-medium">{formatCurrency(monthlySIP)}</span> already covers this goal without any market returns. 
-                You only need <span className="text-white font-medium">{formatIndianRupees(simpleMonthlyNeeded)}</span> per month to reach <span className="text-white font-medium">{formatCurrency(targetAmount)}</span> in {years} years. 
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                Your monthly SIP of <span className="text-zinc-900 font-medium">{formatCurrency(monthlySIP)}</span> already covers this goal without any market returns. 
+                You only need <span className="text-zinc-900 font-medium">{formatIndianRupees(simpleMonthlyNeeded)}</span> per month to reach <span className="text-zinc-900 font-medium">{formatCurrency(targetAmount)}</span> in {years} years. 
                 Consider reducing your SIP or setting a bigger goal.
               </p>
             </div>
           )}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-400">What's your goal?</label>
+            <label className="text-sm font-medium text-zinc-500">What's your goal?</label>
             <input 
               type="text" 
               value={goalName}
               onChange={(e) => setGoalName(e.target.value)}
               placeholder="e.g. Retirement, Dream Home, World Tour"
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-emerald-500 text-white"
+              className={cn(
+                "w-full border rounded-xl px-4 py-2 focus:outline-none focus:border-emerald-500 transition-all shadow-sm",
+                isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-zinc-200 text-zinc-900"
+              )}
             />
           </div>
 
@@ -467,7 +470,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Required Return Rate</p>
-              <p className={cn("text-xl font-bold", requiredReturn > 15 ? "text-red-500" : "text-emerald-400")}>
+              <p className={cn("text-xl font-bold", requiredReturn > 15 ? "text-red-500" : "text-emerald-500")}>
                 {requiredReturn}% <span className="text-[10px] uppercase">p.a</span>
               </p>
               {isOverInvesting && (
@@ -484,7 +487,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Wealth Gain</p>
-              <p className={cn("text-lg font-bold", isOverInvesting ? "text-zinc-500" : "text-emerald-400")}>
+              <p className={cn("text-lg font-bold", isOverInvesting ? "text-zinc-500" : "text-emerald-500")}>
                 +{formatCurrency(totalEarnings)}
               </p>
             </div>
@@ -503,13 +506,16 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
       </div>
 
       {isOverInvesting && (
-        <div className="p-6 rounded-2xl bg-zinc-900 border-l-4 border-emerald-500 shadow-xl space-y-2">
+        <div className={cn(
+          "p-6 rounded-2xl border-l-4 border-emerald-500 shadow-xl space-y-2 transition-colors duration-300",
+          isDark ? "bg-zinc-900" : "bg-white border-zinc-200"
+        )}>
           <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
             WHATIFF INSIGHT
           </p>
-          <p className="text-sm text-zinc-300 leading-relaxed">
-            With <span className="text-white font-medium">{formatCurrency(monthlySIP)}</span> per month for {years} years you will accumulate <span className="text-white font-medium">{formatIndianRupees(finalCorpus)}</span> — <span className="text-white font-medium">{formatIndianRupees(finalCorpus - targetAmount)}</span> more than your <span className="text-white font-medium">{formatIndianRupees(targetAmount)}</span> goal. 
-            Reduce your SIP to <span className="text-white font-medium">{formatIndianRupees(simpleMonthlyNeeded)}</span> and redirect the <span className="text-white font-medium">{formatIndianRupees(monthlySIP - simpleMonthlyNeeded)}</span> difference to a higher-growth instrument, or set a bigger goal that puts this capital to work.
+          <p className={cn("text-sm leading-relaxed transition-colors duration-300", isDark ? "text-zinc-300" : "text-zinc-600")}>
+            With <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatCurrency(monthlySIP)}</span> per month for {years} years you will accumulate <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatIndianRupees(finalCorpus)}</span> — <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatIndianRupees(finalCorpus - targetAmount)}</span> more than your <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatIndianRupees(targetAmount)}</span> goal. 
+            Reduce your SIP to <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatIndianRupees(simpleMonthlyNeeded)}</span> and redirect the <span className={cn("font-medium", isDark ? "text-white" : "text-zinc-900")}>{formatIndianRupees(monthlySIP - simpleMonthlyNeeded)}</span> difference to a higher-growth instrument, or set a bigger goal that puts this capital to work.
           </p>
         </div>
       )}
@@ -538,22 +544,22 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
                   dataKey="value"
                   stroke="none"
                 >
-                  <Cell fill={isDark ? "#52525b" : "#d1d5db"} />
+                  <Cell fill="#d1d5db" />
                   <Cell fill="#10b981" />
                 </Pie>
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                    border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                     borderRadius: '8px' 
                   }}
-                  itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                  itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                   formatter={(value: number) => [formatCurrency(value), '']}
                 />
               </PieChart>
             </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-3xl font-bold text-emerald-400">
+                <p className={cn("text-3xl font-bold", isDark ? "text-emerald-500" : "text-emerald-600")}>
                   {results.wealthGainPercent}%
                 </p>
                 <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Wealth Gain</p>
@@ -561,12 +567,12 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
           </div>
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-zinc-600" />
-              <span className="text-xs text-zinc-400">Principal</span>
+              <div className="w-3 h-3 rounded-full bg-zinc-400" />
+              <span className="text-xs text-zinc-500">Principal</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-zinc-400">Wealth Gain</span>
+              <span className="text-xs text-zinc-500">Wealth Gain</span>
             </div>
           </div>
         </div>
@@ -589,14 +595,14 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                 <XAxis 
                   dataKey="year" 
-                  stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                  stroke="#a1a1aa" 
                   fontSize={12} 
                   tickLine={false} 
                   axisLine={false}
-                  label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
+                  label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: '#a1a1aa', fontSize: 10 }}
                 />
                 <YAxis 
-                  stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                  stroke="#a1a1aa" 
                   fontSize={10} 
                   tickLine={false} 
                   axisLine={false}
@@ -605,11 +611,11 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                    border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                     borderRadius: '8px',
-                    color: isDark ? '#ffffff' : '#09090b'
+                    color: isDark ? '#f4f4f5' : '#09090b'
                   }}
-                  itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                  itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                   formatter={(value: number) => [formatCurrency(value), 'Value']}
                   labelFormatter={(label) => `Year ${label}`}
                 />
@@ -636,10 +642,13 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
 
       {/* Asset Allocation Section */}
       {!isOverInvesting && (
-        <div className="glass-card p-6 space-y-6">
+        <div className={cn(
+          "glass-card p-6 space-y-6 transition-colors duration-300",
+          isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        )}>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">How Investors Typically Achieve {requiredReturn.toFixed(1)}% Returns</h3>
+              <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>How Investors Typically Achieve {requiredReturn.toFixed(1)}% Returns</h3>
               <p className="text-zinc-500 text-[11px]">Based on historical asset class performance. Not a recommendation.</p>
             </div>
             <span className={cn(

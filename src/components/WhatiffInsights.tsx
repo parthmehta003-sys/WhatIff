@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Sparkles, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 interface WhatiffInsightsProps {
-  calculatorType: 'retirement' | 'sip' | 'emi' | 'goal' | 'fd' | 'staggered-fd' | 'loan-affordability' | 'home-purchase' | 'buy-vs-rent';
+  calculatorType: 'retirement' | 'sip' | 'emi' | 'goal' | 'fd' | 'staggered-fd' | 'loan-affordability' | 'home-purchase' | 'buy-vs-rent' | 'prepay-vs-invest';
   results: any;
   onAskAI?: (context?: any, chips?: string[], systemPrompt?: string) => void;
   insights?: string[];
   chips?: string[];
   systemPrompt?: string;
+  hideBullets?: boolean;
 }
 
 const safeNum = (val: any, fallback = 0): number => {
@@ -36,8 +38,11 @@ export default function WhatiffInsights({
   onAskAI,
   insights: propsInsights,
   chips,
-  systemPrompt
+  systemPrompt,
+  hideBullets = false
 }: WhatiffInsightsProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
 
   const generateWhatiffInsights = () => {
@@ -142,7 +147,7 @@ export default function WhatiffInsights({
   const renderBold = (text: string) => {
     return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="text-emerald-400 font-bold">{part.slice(2, -2)}</strong>;
+        return <strong key={i} className="text-emerald-600 font-bold">{part.slice(2, -2)}</strong>;
       }
       return part;
     });
@@ -152,16 +157,19 @@ export default function WhatiffInsights({
 
   return (
     <div className="space-y-6">
-      <div className="glass-card p-6 border-l-4 border-emerald-500">
+      <div className={cn(
+        "glass-card p-6 border-l-4 border-emerald-500 transition-colors duration-300",
+        isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+      )}>
         <button 
           onClick={() => setIsInsightsOpen(!isInsightsOpen)}
           className="w-full flex items-center justify-between group"
         >
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-500" />
-            <h3 className="text-lg font-bold text-white">Whatiff Insights</h3>
+            <h3 className={cn("text-lg font-bold transition-colors duration-300", isDark ? "text-white" : "text-black")}>Whatiff Insights</h3>
           </div>
-          <div className="flex items-center gap-2 text-zinc-400 group-hover:text-white transition-colors">
+          <div className={cn("flex items-center gap-2 transition-colors duration-300", isDark ? "text-zinc-500 group-hover:text-white" : "text-zinc-500 group-hover:text-black")}>
             <span className="text-xs font-bold uppercase tracking-wider">
               {isInsightsOpen ? 'Hide' : 'View'} Insights
             </span>
@@ -181,8 +189,8 @@ export default function WhatiffInsights({
               <div className="space-y-4">
                 {insights.map((insight, index) => (
                   <div key={index} className="flex gap-3">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <p className="text-zinc-300 leading-relaxed">{renderBold(insight)}</p>
+                    {!hideBullets && <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
+                    <p className={cn("leading-relaxed transition-colors duration-300", isDark ? "text-zinc-300" : "text-zinc-700")}>{renderBold(insight)}</p>
                   </div>
                 ))}
               </div>
@@ -190,7 +198,10 @@ export default function WhatiffInsights({
               {onAskAI && (
                 <button
                   onClick={() => onAskAI({ ...results, calculatorType }, chips, systemPrompt)}
-                  className="mt-8 w-full py-4 px-6 rounded-xl bg-emerald-500 text-zinc-950 font-bold flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all active:scale-[0.98]"
+                  className={cn(
+                    "mt-8 w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
+                    isDark ? "bg-white text-zinc-950 hover:bg-zinc-200" : "bg-black text-white hover:bg-zinc-800"
+                  )}
                 >
                   <MessageSquare className="w-5 h-5" />
                   Ask anything about these numbers

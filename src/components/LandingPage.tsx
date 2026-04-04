@@ -185,6 +185,12 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       image: "/Mayur-Testimonial.jpg"
     },
     {
+      quote: "I always thought I had a decent plan, but this showed me where I actually stand. That clarity is what makes it valuable.",
+      author: "Sheenu Gaur",
+      role: "Brand Strategist",
+      image: "/Sheenu-Testimonial.png"
+    },
+    {
       quote: "Clean, fast, and intelligent. This is what financial tools should look like in 2026. No ads, no fluff, just pure utility.",
       author: "Tanvi Dhurandhar",
       role: "Entrepreneur",
@@ -299,18 +305,18 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         <div style={{ 
           position: 'absolute', 
           inset: 0, 
-          background: 'radial-gradient(circle at center, rgba(9,9,11,0.3) 0%, rgba(9,9,11,0.85) 100%)',
+          background: 'transparent',
           zIndex: 1 
         }} />
         
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '680px' }}>
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} style={{
             display: 'inline-block',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.04)',
+            border: '1px solid rgba(0,0,0,0.08)',
             borderRadius: '99px',
             padding: '4px 12px',
-            color: '#52525b',
+            color: '#fff',
             fontSize: '10px',
             letterSpacing: '0.12em',
             fontWeight: 700,
@@ -325,10 +331,11 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             lineHeight: 1.1,
             letterSpacing: '-0.03em',
             marginBottom: '24px',
-            minHeight: '2.2em'
+            minHeight: '2.2em',
+            color: '#fff'
           }}>
             Every finance calculator is either behind a paywall, full of ads, built in 2009, or <span style={{
-              background: 'linear-gradient(90deg, #10b981, #8b5cf6, #06b6d4)',
+              background: 'linear-gradient(90deg, #059669, #7c3aed, #0891b2)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -338,14 +345,15 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           <motion.h2 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.3 }} style={{
             fontSize: 'clamp(20px, 3vw, 28px)',
             fontWeight: 800,
-            marginBottom: '16px'
+            marginBottom: '16px',
+            color: '#fff'
           }}>
             WhatIff fixes that.
           </motion.h2>
 
           <motion.p {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.4 }} style={{
             fontSize: '15px',
-            color: '#71717a',
+            color: '#a1a1aa',
             marginBottom: '40px'
           }}>
             One place to run your numbers and actually understand them.
@@ -355,7 +363,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             <button 
               onClick={onStart}
               style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
+                background: '#10b981',
                 color: '#000',
                 border: 'none',
                 borderRadius: '14px',
@@ -363,7 +371,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
                 fontWeight: 800,
                 fontSize: '16px',
                 cursor: 'pointer',
-                boxShadow: '0 0 30px rgba(16,185,129,0.4)',
+                boxShadow: '0 10px 20px rgba(16,185,129,0.2)',
                 transition: 'transform 0.2s'
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
@@ -371,7 +379,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             >
               Start Calculating
             </button>
-            <p style={{ color: '#3f3f46', fontSize: '12px', marginTop: '16px' }}>
+            <p style={{ color: '#71717a', fontSize: '12px', marginTop: '16px' }}>
               No login required. Your numbers stay on your device.
             </p>
           </motion.div>
@@ -385,7 +393,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             bottom: '40px', 
             left: '50%', 
             transform: 'translateX(-50%)',
-            color: '#3f3f46',
+            color: '#fff',
             fontSize: '10px',
             fontWeight: 800,
             letterSpacing: '0.1em'
@@ -398,25 +406,25 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       {/* Live Calculator Section */}
       <section style={{ 
         padding: '40px 24px 40px', 
-        background: 'linear-gradient(to bottom, #09090b, #0a140e, #09090b)',
+        background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center'
       }}>
         <div style={{ maxWidth: '680px', width: '100%', textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ color: '#52525b', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>LIVE DEMO</div>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, marginBottom: '12px' }}>Try it right now.</h2>
-          <p style={{ color: '#52525b', fontSize: '14px' }}>No login. No sign up. See exactly what WhatIff does — live.</p>
+          <div style={{ color: '#10b981', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>LIVE DEMO</div>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, marginBottom: '12px', color: '#fff' }}>Try it right now.</h2>
+          <p style={{ color: '#a1a1aa', fontSize: '14px' }}>No login. No sign up. See exactly what WhatIff does — live.</p>
         </div>
 
         <div style={{ 
           maxWidth: '680px', 
           width: '100%',
-          background: 'rgba(16,185,129,0.04)',
-          border: '1px solid rgba(16,185,129,0.2)',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '20px',
           padding: '32px 28px',
-          boxShadow: '0 0 40px rgba(16,185,129,0.08)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
           minHeight: '400px', // Add min-height to prevent layout shift
           display: 'flex',
           flexDirection: 'column',
@@ -449,10 +457,10 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       </section>
 
       {/* Testimonials Section */}
-      <section style={{ padding: '100px 24px', background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ padding: '100px 24px', background: 'transparent', borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <h2 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 900, letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 900, letterSpacing: '-0.02em', color: '#fff' }}>
               Real people. <span style={{ color: '#10b981' }}>Real numbers.</span> Real decisions.
             </h2>
           </div>
@@ -477,7 +485,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
                 >
                   <div
                     style={{
-                      background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                      background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: '24px',
                       padding: '32px',
@@ -487,7 +495,8 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
                       flexDirection: 'column',
                       justifyContent: 'center',
                       position: 'relative',
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      backdropFilter: 'blur(10px)'
                     }}
                   >
                     <div style={{ 
@@ -503,7 +512,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
                       <Quote size={40} color="#10b981" />
                     </div>
                     
-                    <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.6, color: '#f4f4f5', marginBottom: '32px', position: 'relative', zIndex: 1, flex: 1 }}>
+                    <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.6, color: '#a1a1aa', marginBottom: '32px', position: 'relative', zIndex: 1, flex: 1 }}>
                       {testimonial.quote}
                     </p>
 
@@ -604,8 +613,8 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       {/* Features Section */}
       <section style={{ padding: '40px 24px 40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ color: '#52525b', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>THE DIFFERENCE</div>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800 }}>WhatIff is different.</h2>
+          <div style={{ color: '#10b981', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>THE DIFFERENCE</div>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, color: '#fff' }}>WhatIff is different.</h2>
         </div>
 
         <div style={{ 
@@ -711,15 +720,15 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         padding: '40px 24px 100px 24px', 
         textAlign: 'center', 
         position: 'relative',
-        background: 'linear-gradient(to bottom, #09090b, #020d06, #09090b)'
+        background: 'transparent'
       }}>
         <div style={{ 
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: '300px', height: '300px', background: 'rgba(16,185,129,0.1)', filter: 'blur(80px)', borderRadius: '50%', zIndex: 0
+          width: '300px', height: '300px', background: 'rgba(0,0,0,0.05)', filter: 'blur(80px)', borderRadius: '50%', zIndex: 0
         }} />
         
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: '40px' }}>
+          <div style={{ fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: '40px', color: '#fff' }}>
             <div>Your numbers.</div>
             <div style={{
               background: 'linear-gradient(90deg, #10b981, #8b5cf6, #06b6d4)',
@@ -732,7 +741,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           <button 
             onClick={onStart}
             style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
+              background: '#10b981',
               color: '#000',
               border: 'none',
               borderRadius: '14px',
@@ -740,7 +749,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
               fontWeight: 800,
               fontSize: '18px',
               cursor: 'pointer',
-              boxShadow: '0 0 40px rgba(16,185,129,0.4)',
+              boxShadow: '0 10px 30px rgba(16,185,129,0.3)',
               transition: 'transform 0.2s',
               marginBottom: '16px'
             }}
@@ -749,7 +758,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           >
             Open WhatIff
           </button>
-          <p style={{ color: '#3f3f46', fontSize: '13px' }}>No login required. Start in seconds.</p>
+          <p style={{ color: '#71717a', fontSize: '13px' }}>No login required. Start in seconds.</p>
         </div>
       </section>
 

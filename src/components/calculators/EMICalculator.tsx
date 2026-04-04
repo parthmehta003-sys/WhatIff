@@ -233,7 +233,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
       </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <CreditCard className="w-6 h-6 text-emerald-500" />
             EMI Calculator
           </h1>
@@ -242,7 +242,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -257,7 +257,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -314,7 +314,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Total Interest</p>
-              <p className="text-lg font-bold text-red-400">{formatCurrency(result.totalInterest)}</p>
+              <p className="text-lg font-bold text-red-500">{formatCurrency(result.totalInterest)}</p>
             </div>
           </div>
           <div className="pt-2">
@@ -339,7 +339,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
           "glass-card p-6 min-w-0 transition-colors duration-300",
           isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
         )}>
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">Breakdown</h3>
+          <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Breakdown</h3>
           <div className="h-[300px] w-full relative flex items-center justify-center" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
               <ResponsiveContainer width="100%" height="100%">
@@ -361,10 +361,10 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                      border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                       borderRadius: '8px' 
                     }}
-                    itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                    itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                     formatter={(value: number, name: string) => [formatCurrency(value), name]}
                   />
                 </PieChart>
@@ -380,11 +380,11 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
           <div className="flex justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-zinc-400">Principal</span>
+              <span className="text-xs text-zinc-500">Principal</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-xs text-zinc-400">Interest</span>
+              <div className="w-3 h-3 rounded-full bg-red-500" />
+              <span className="text-xs text-zinc-500">Interest</span>
             </div>
           </div>
         </div>
@@ -394,7 +394,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
           "glass-card p-6 min-w-0 transition-colors duration-300",
           isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
         )}>
-          <h3 className="text-sm font-semibold text-zinc-400 mb-6 uppercase tracking-widest">Loan Balance Projection</h3>
+          <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Loan Balance Projection</h3>
           <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
             {chartReady && (
               <ResponsiveContainer width="100%" height="100%">
@@ -408,14 +408,14 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
                   <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="year" 
-                    stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                    stroke="#a1a1aa" 
                     fontSize={12} 
                     tickLine={false} 
                     axisLine={false}
-                    label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
+                    label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: '#a1a1aa', fontSize: 10 }}
                   />
                   <YAxis 
-                    stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                    stroke="#a1a1aa" 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
@@ -424,11 +424,11 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                      border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                       borderRadius: '8px',
-                      color: isDark ? '#ffffff' : '#09090b'
+                      color: isDark ? '#f4f4f5' : '#09090b'
                     }}
-                    itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                    itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                     formatter={(value: number) => [formatCurrency(value), 'Balance']}
                     labelFormatter={(label) => `Year ${label}`}
                   />
@@ -471,6 +471,31 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
         questionCount={questionCount}
         maxQuestions={MAX_QUESTIONS}
       />
+
+      {/* Nudge Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className={cn(
+          "glass-card p-6 mb-8 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
+          isDark ? "bg-white/5 border-white/5 hover:bg-white/10" : "bg-white border-zinc-200 shadow-sm hover:bg-zinc-50"
+        )}
+        onClick={() => onNavigate('prepay_vs_invest')}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ArrowUpRight className="w-6 h-6 text-purple-500" />
+            </div>
+            <div>
+              <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900 group-hover:text-purple-600")}>💡 Prepay vs Invest</h3>
+              <p className="text-xs text-zinc-500">Have extra cash? See if you should prepay your loan or invest it.</p>
+            </div>
+          </div>
+          <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-white group-hover:translate-x-1" : "text-zinc-400 group-hover:text-zinc-900 group-hover:translate-x-1")} />
+        </div>
+      </motion.div>
 
       <BrokerSection />
 

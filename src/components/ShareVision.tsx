@@ -11,6 +11,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { formatIndianRupees, cn, formatIndianShort } from '../lib/utils';
 import { toPng } from 'html-to-image';
 
+const safeNum = (val: any, fallback = 0): number => {
+  const n = parseFloat(val);
+  return isNaN(n) ? fallback : n;
+};
+
 interface ShareVisionProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,10 +45,16 @@ interface CardConfig {
   stat2Value: string;
   stat2Color: string; // Hex code
   stat2Dot?: string;  // Hex code
+  stat3Label?: string;
+  stat3Value?: string;
+  stat3Color?: string; // Hex code
   subline: string;
+  backgroundColor?: string; // Hex code
   mainValueSuffix?: string;
   customBottomLeft?: string;
   isBuyVsRent?: boolean;
+  isPrepayVsInvest?: boolean;
+  disclaimer?: string;
 }
 
 import { renderInsight } from '../renderInsight';
@@ -347,6 +358,37 @@ export default function ShareVision({
       }
 
       // Default Borrow (EMI)
+      if (inputs.calculatorType === 'prepay-vs-invest') {
+        const isPrepayWinner = inputs.result?.winner === 'prepay';
+        const accentColor = isPrepayWinner ? '#8b5cf6' : '#10b981';
+        const margin = Math.abs(inputs.result?.netAdvantage || 0);
+        
+        return {
+          badge: 'BORROW',
+          emoji: isPrepayWinner ? '🏠' : '📈',
+          headline: isPrepayWinner 
+            ? `Prepaying ₹${formatIndianShort(inputs.extra)}/month closes my home loan ${inputs.result?.monthsSaved} months early and saves ₹${formatIndianShort(inputs.result?.interestSaved)} in interest.`
+            : `Investing ₹${formatIndianShort(inputs.extra)}/month builds a ₹${formatIndianShort(inputs.result?.scenarioB?.fvSIP)} corpus, outperforming prepayment by ₹${formatIndianShort(margin)}.`,
+          accentColor: accentColor,
+          glowColor: accentColor,
+          mainValueColor: '#ffffff',
+          footerPill: isPrepayWinner ? `🏠 Prepaying wins by ₹${formatIndianShort(margin)}` : `📈 Investing wins by ₹${formatIndianShort(margin)}`,
+          stat1Label: isPrepayWinner ? 'INTEREST SAVED' : 'SIP CORPUS',
+          stat1Value: isPrepayWinner ? formatIndianShort(inputs.result?.interestSaved) : formatIndianShort(inputs.result?.scenarioB?.fvSIP),
+          stat1Color: accentColor,
+          stat2Label: isPrepayWinner ? 'MONTHS FREED' : 'TAX BENEFITS',
+          stat2Value: isPrepayWinner ? `${inputs.result?.monthsSaved}` : formatIndianShort(inputs.result?.scenarioB?.taxSaved),
+          stat2Color: '#ffffff',
+          stat3Label: 'NET BENEFIT',
+          stat3Value: isPrepayWinner ? formatIndianShort(inputs.result?.scenarioA?.wealth) : formatIndianShort(inputs.result?.scenarioB?.wealth),
+          stat3Color: accentColor,
+          subline: `On a ₹${formatIndianShort(safeNum(inputs.outstanding))} loan at ${safeNum(inputs.rate)}% over ${safeNum(inputs.tenure)} years`,
+          backgroundColor: '#09090b',
+          isPrepayVsInvest: true,
+          disclaimer: "WhatIff — Know your numbers · whatiff.in · Not financial advice"
+        };
+      }
+
       return {
         badge: 'BORROW',
         emoji: '🏠',
@@ -689,7 +731,7 @@ export default function ShareVision({
             ref={cardRef}
             className="w-full h-auto min-h-[800px] rounded-[40px] p-8 md:p-10 flex flex-col relative overflow-hidden shadow-2xl shrink-0 font-sans"
             style={{ 
-              backgroundColor: '#09090b',
+              backgroundColor: config.backgroundColor || '#09090b',
               border: '1px solid rgba(255, 255, 255, 0.05)'
             }}
           >
@@ -711,57 +753,63 @@ export default function ShareVision({
 
             {/* Header */}
             <div className="flex justify-between items-center mb-12 relative z-10">
-              <div 
-                className="px-4 py-1.5 rounded-full border flex items-center gap-2 shadow-lg"
-                style={{ 
-                  borderColor: `${config.accentColor}4d`, // 30% opacity
-                  backgroundColor: `${config.accentColor}1a`, // 10% opacity
-                  boxShadow: `0 10px 15px -3px ${config.accentColor}33` // 20% opacity
-                }}
-              >
-                <span 
-                  className="text-[11px] font-bold tracking-[0.2em] uppercase"
-                  style={{ color: config.accentColor }}
-                >
-                  {config.badge}
-                </span>
+              {config.isPrepayVsInvest ? (
+                <span className="text-2xl font-bold text-emerald-500 tracking-tighter">WhatIff</span>
+              ) : (
                 <div 
-                  className="w-1.5 h-1.5 rounded-full" 
-                  style={{ backgroundColor: config.accentColor }}
-                />
-              </div>
+                  className="px-4 py-1.5 rounded-full border flex items-center gap-2 shadow-lg"
+                  style={{ 
+                    borderColor: `${config.accentColor}4d`, // 30% opacity
+                    backgroundColor: `${config.accentColor}1a`, // 10% opacity
+                    boxShadow: `0 10px 15px -3px ${config.accentColor}33` // 20% opacity
+                  }}
+                >
+                  <span 
+                    className="text-[11px] font-bold tracking-[0.2em] uppercase"
+                    style={{ color: config.accentColor }}
+                  >
+                    {config.badge}
+                  </span>
+                  <div 
+                    className="w-1.5 h-1.5 rounded-full" 
+                    style={{ backgroundColor: config.accentColor }}
+                  />
+                </div>
+              )}
               <span className="text-3xl filter drop-shadow-lg">{config.emoji}</span>
             </div>
 
             {/* Headline Section */}
-            <div className={cn("mb-10 relative z-10", config.isBuyVsRent ? "text-left" : "space-y-4 text-center")}>
+            <div className={cn("mb-10 relative z-10", (config.isBuyVsRent || config.isPrepayVsInvest) ? "text-left" : "space-y-4 text-center")}>
               <h2 className={cn(
                 "font-serif font-medium text-white leading-[1.1] tracking-tight",
-                config.isBuyVsRent ? "text-[48px] md:text-[54px]" : "text-[36px] md:text-[42px]"
+                (config.isBuyVsRent || config.isPrepayVsInvest) ? "text-[32px] md:text-[36px]" : "text-[36px] md:text-[42px]"
               )}>
                 {config.headline}
               </h2>
-              <div 
-                className={cn(
-                  "font-display font-black leading-[1] tracking-tighter whitespace-nowrap", 
-                  config.isBuyVsRent ? "text-[64px] md:text-[74px] mb-4" : (
-                    mainValue >= 10000000 ? "text-[42px] md:text-[52px]" : 
-                    (title.includes('Affordability') || title.includes('Power')) ? "text-[48px] md:text-[58px]" : "text-[54px] md:text-[64px]"
-                  )
-                )}
-                style={{ color: config.mainValueColor }}
-              >
-                {config.isBuyVsRent ? formatIndianShort(mainValue) : (isBasicFD ? (mainValue < 0 ? `−${Math.abs(mainValue)}` : mainValue) : (isAffordability ? formatIndianRupees(mainValue).replace('Lakhs', 'Lacs') : formatIndianRupees(mainValue)))}
-                {config.mainValueSuffix && (
-                  <span className="text-[18px] md:text-[22px] ml-2 font-display font-bold opacity-70 tracking-normal">
-                    {config.mainValueSuffix}
-                  </span>
-                )}
-              </div>
+              {!config.isPrepayVsInvest && (
+                <div 
+                  className={cn(
+                    "font-display font-black leading-[1] tracking-tighter whitespace-nowrap", 
+                    config.isBuyVsRent ? "text-[64px] md:text-[74px] mb-4" : (
+                      mainValue >= 10000000 ? "text-[42px] md:text-[52px]" : 
+                      (title.includes('Affordability') || title.includes('Power')) ? "text-[48px] md:text-[58px]" : "text-[54px] md:text-[64px]"
+                    )
+                  )}
+                  style={{ color: config.mainValueColor }}
+                >
+                  {config.isBuyVsRent ? formatIndianShort(mainValue) : (isBasicFD ? (mainValue < 0 ? `−${Math.abs(mainValue)}` : mainValue) : (isAffordability ? formatIndianRupees(mainValue).replace('Lakhs', 'Lacs') : formatIndianRupees(mainValue)))}
+                  {config.mainValueSuffix && (
+                    <span className="text-[18px] md:text-[22px] ml-2 font-display font-bold opacity-70 tracking-normal">
+                      {config.mainValueSuffix}
+                    </span>
+                  )}
+                </div>
+              )}
               <p 
                 className={cn(
                   "font-medium opacity-80 tracking-tight",
-                  config.isBuyVsRent ? "text-[14px] uppercase tracking-[0.2em] text-zinc-500" : "text-base md:text-lg text-zinc-400"
+                  config.isBuyVsRent ? "text-[14px] uppercase tracking-[0.2em] text-zinc-500" : (config.isPrepayVsInvest ? "text-[13px] text-zinc-400 mt-2" : "text-base md:text-lg text-zinc-400")
                 )}
               >
                 {formatValue(config.subline)}
@@ -812,6 +860,40 @@ export default function ShareVision({
                     </p>
                   </div>
                 ))}
+              </div>
+            ) : config.isPrepayVsInvest ? (
+              <div className="space-y-6 mb-8 relative z-10">
+                <div className="grid grid-cols-3 gap-2">
+                  {config.stat1Label && (
+                    <div className="rounded-2xl p-4 space-y-1 bg-white/5 border border-white/5 text-center">
+                      <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-tight">{config.stat1Label}</p>
+                      <p className="text-base font-display font-bold" style={{ color: config.stat1Color }}>{config.stat1Value}</p>
+                    </div>
+                  )}
+                  {config.stat2Label && (
+                    <div className="rounded-2xl p-4 space-y-1 bg-white/5 border border-white/5 text-center">
+                      <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-tight">{config.stat2Label}</p>
+                      <p className="text-base font-display font-bold" style={{ color: config.stat2Color }}>{config.stat2Value}</p>
+                    </div>
+                  )}
+                  {config.stat3Label && (
+                    <div className="rounded-2xl p-4 space-y-1 bg-white/5 border border-white/5 text-center">
+                      <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest leading-tight">{config.stat3Label}</p>
+                      <p className="text-base font-display font-bold" style={{ color: config.stat3Color }}>{config.stat3Value}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div 
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-[13px]"
+                  style={{ 
+                    backgroundColor: `${config.accentColor}26`, // 15% opacity
+                    borderColor: `${config.accentColor}4d`, // 30% opacity
+                    color: config.accentColor
+                  }}
+                >
+                  {config.footerPill}
+                </div>
               </div>
             ) : (config.isBuyVsRent) ? (
               <div className="grid grid-cols-2 gap-0 mb-12 relative z-10 border-y border-white/5 py-8">
@@ -921,35 +1003,43 @@ export default function ShareVision({
 
             {/* Footer */}
             <div 
-              className="flex items-center justify-between pt-8 relative z-10 w-full mt-auto"
+              className="flex flex-col gap-6 pt-8 relative z-10 w-full mt-auto"
               style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}
             >
-              <div className="flex items-center gap-2.5">
-                {config.isBuyVsRent ? (
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xl font-bold text-white tracking-tighter uppercase">WhatIff</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  {config.isBuyVsRent ? (
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xl font-bold text-white tracking-tighter uppercase">WhatIff</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 font-medium tracking-tight">
+                        {config.customBottomLeft}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-zinc-600 font-medium tracking-tight">
-                      {config.customBottomLeft}
-                    </p>
-                  </div>
-                ) : (
-                  <span className="text-xl md:text-2xl font-bold text-white tracking-tighter">WhatIff</span>
-                )}
+                  ) : (
+                    <span className="text-xl md:text-2xl font-bold text-white tracking-tighter">WhatIff</span>
+                  )}
+                </div>
+                <div 
+                  className={cn(
+                    "font-bold text-white shadow-xl whitespace-nowrap",
+                    config.isBuyVsRent ? "px-8 py-6 rounded-[32px] text-[16px] uppercase tracking-widest" : "px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[10px] md:text-[11px]"
+                  )} 
+                  style={{ 
+                    backgroundColor: config.accentColor,
+                    boxShadow: `0 20px 25px -5px ${config.accentColor}33`, // 20% opacity
+                    display: config.isPrepayVsInvest ? 'none' : 'block'
+                  }}
+                >
+                  {config.footerPill}
+                </div>
               </div>
-              <div 
-                className={cn(
-                  "font-bold text-white shadow-xl whitespace-nowrap",
-                  config.isBuyVsRent ? "px-8 py-6 rounded-[32px] text-[16px] uppercase tracking-widest" : "px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[10px] md:text-[11px]"
-                )} 
-                style={{ 
-                  backgroundColor: config.accentColor,
-                  boxShadow: `0 20px 25px -5px ${config.accentColor}33` // 20% opacity
-                }}
-              >
-                {config.footerPill}
-              </div>
+              {config.disclaimer && (
+                <p className="text-[10px] text-zinc-500 text-center font-medium opacity-60">
+                  {config.disclaimer}
+                </p>
+              )}
             </div>
           </div>
 

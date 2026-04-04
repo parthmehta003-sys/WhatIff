@@ -298,7 +298,7 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
       </Helmet>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>
             <Palmtree className="w-6 h-6 text-emerald-500" />
             Retirement Planning
           </h1>
@@ -307,7 +307,7 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
         <div className="flex items-center gap-2">
           <button 
             onClick={handleExport}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
             title="Export to Excel"
           >
             <Download className="w-5 h-5" />
@@ -323,7 +323,7 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
           />
           <button 
             onClick={() => setIsShareOpen(true)}
-            className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors"
+            className={cn("p-2 rounded-full transition-colors", isDark ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -440,9 +440,9 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Required Monthly SIP</p>
               {results.futureValueOfExistingNetWorth >= results.corpusRequired ? (
-                <p className="text-lg font-bold text-emerald-400">₹0</p>
+                <p className="text-lg font-bold text-emerald-500">₹0</p>
               ) : (
-                <p className="text-lg font-bold text-emerald-400">{formatCurrency(safeValue(results.requiredSIP))}</p>
+                <p className="text-lg font-bold text-emerald-500">{formatCurrency(safeValue(results.requiredSIP))}</p>
               )}
             </div>
           </div>
@@ -451,20 +451,20 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
             <div className={cn("grid grid-cols-2 gap-4 pt-6 border-t", isDark ? "border-white/5" : "border-zinc-100")}>
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Your Net Worth Grows To</p>
-                <p className="text-lg font-bold text-emerald-400">{formatCurrency(safeValue(results.futureValueOfExistingNetWorth))}</p>
+                <p className="text-lg font-bold text-emerald-500">{formatCurrency(safeValue(results.futureValueOfExistingNetWorth))}</p>
                 <p className="text-[10px] text-zinc-500">What your existing {formatCurrency(results.existingNetWorth)} becomes by retirement at {results.returnPre}% p.a.</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Corpus Still Needed</p>
-                <p className="text-lg font-bold text-emerald-400">{formatCurrency(results.corpusRequired - results.futureValueOfExistingNetWorth)}</p>
+                <p className="text-lg font-bold text-emerald-500">{formatCurrency(results.corpusRequired - results.futureValueOfExistingNetWorth)}</p>
                 <p className="text-[10px] text-zinc-500">After your existing net worth, this is what your SIP needs to build</p>
               </div>
             </div>
           )}
 
           {results.futureValueOfExistingNetWorth >= results.corpusRequired && (
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-              <p className="text-sm text-emerald-400 leading-relaxed">
+            <div className={cn("p-4 rounded-xl border shadow-sm transition-colors duration-300", isDark ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200")}>
+              <p className="text-sm text-emerald-600 leading-relaxed">
                 Your existing net worth of {formatCurrency(results.existingNetWorth)} is on track to cover your full retirement corpus at {results.returnPre}% returns. No additional monthly investment is needed.
               </p>
             </div>
@@ -495,14 +495,14 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
                   <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
                   <XAxis 
                     dataKey="year" 
-                    stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                    stroke="#a1a1aa" 
                     fontSize={12} 
                     tickLine={false} 
                     axisLine={false}
-                    label={{ value: 'Year', position: 'insideBottom', offset: -5, fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
+                    label={{ value: 'Year', position: 'insideBottom', offset: -5, fill: '#a1a1aa', fontSize: 10 }}
                   />
                   <YAxis 
-                    stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                    stroke="#a1a1aa" 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false}
@@ -512,11 +512,11 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
                     cursor={false}
                     contentStyle={{ 
                       backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                      border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                      border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                       borderRadius: '8px',
-                      color: isDark ? '#ffffff' : '#09090b'
+                      color: isDark ? '#f4f4f5' : '#09090b'
                     }}
-                    itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                    itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                     formatter={(value: number, name: string) => [formatCurrency(value), name]}
                     labelFormatter={(label) => `Year ${label}`}
                   />
@@ -579,11 +579,11 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: isDark ? '#52525b' : '#a1a1aa', fontSize: 10 }}
+                      tick={{ fill: '#a1a1aa', fontSize: 10 }}
                       interval={0}
                     />
                     <YAxis 
-                      stroke={isDark ? "#52525b" : "#a1a1aa"} 
+                      stroke="#a1a1aa" 
                       fontSize={10} 
                       tickLine={false} 
                       axisLine={false}
@@ -592,10 +592,10 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                        border: isDark ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
                         borderRadius: '8px' 
                       }}
-                      itemStyle={{ color: isDark ? '#ffffff' : '#09090b' }}
+                      itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
                       cursor={{ fill: 'transparent' }}
                       formatter={(value: number, name: string) => [formatCurrency(value), name]}
                     />
@@ -612,7 +612,7 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
                         dataKey="value" 
                         position="top" 
                         formatter={(val: number) => formatIndianShort(val).replace('₹', '')}
-                        fill={isDark ? "#a1a1aa" : "#71717a"}
+                        fill="#71717a"
                         fontSize={10}
                         offset={8}
                       />

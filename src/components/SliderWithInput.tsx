@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 interface SliderWithInputProps {
   label: string;
@@ -29,6 +30,8 @@ export default function SliderWithInput({
   footerLabel,
   tag
 }: SliderWithInputProps) {
+  const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [isEditing, setIsEditing] = useState(false);
   const [displayValue, setDisplayValue] = useState(value.toString());
   const [shouldShake, setShouldShake] = useState(false);
@@ -113,9 +116,12 @@ export default function SliderWithInput({
     <div className={cn("space-y-4", className)}>
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-zinc-400">{label}</label>
+          <label className={cn("text-sm font-medium transition-colors duration-300", isDark ? "text-zinc-400" : "text-zinc-600")}>{label}</label>
           {tag && (
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold text-emerald-500 uppercase tracking-wider">
+            <span className={cn(
+              "px-1.5 py-0.5 rounded border text-[8px] font-bold uppercase tracking-wider transition-colors duration-300",
+              isDark ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-emerald-50 border-emerald-100 text-emerald-600"
+            )}>
               {tag}
             </span>
           )}
@@ -142,7 +148,8 @@ export default function SliderWithInput({
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: shouldShake ? 0.4 : 0.2 }}
                 className={cn(
-                  "bg-zinc-900 font-bold text-right border-[1.5px] rounded-[6px] px-2 py-1 focus:outline-none w-full",
+                  "font-bold text-right border-[1.5px] rounded-[6px] px-2 py-1 focus:outline-none w-full transition-colors duration-300",
+                  isDark ? "bg-zinc-900" : "bg-white",
                   accentText,
                   accentBorder
                 )}
@@ -184,7 +191,7 @@ export default function SliderWithInput({
         className={cn("input-slider", accentRange)}
       />
       {footerLabel && (
-        <p className="text-[11px] text-zinc-400">{footerLabel}</p>
+        <p className={cn("text-[11px] transition-colors duration-300", isDark ? "text-zinc-400" : "text-zinc-500")}>{footerLabel}</p>
       )}
     </div>
   );
