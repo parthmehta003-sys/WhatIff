@@ -10,9 +10,10 @@ interface SaveScenarioButtonProps {
   outputs: Record<string, any>;
   defaultName?: string;
   onBeforeSave?: (outputs: Record<string, any>) => void;
+  onSuccess?: (name: string) => void;
 }
 
-export default function SaveScenarioButton({ type, inputs, outputs, defaultName, onBeforeSave }: SaveScenarioButtonProps) {
+export default function SaveScenarioButton({ type, inputs, outputs, defaultName, onBeforeSave, onSuccess }: SaveScenarioButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [name, setName] = useState(defaultName || '');
@@ -33,6 +34,8 @@ export default function SaveScenarioButton({ type, inputs, outputs, defaultName,
       inputs,
       outputs
     });
+
+    if (onSuccess) onSuccess(name);
 
     trackEvent('Scenario Saved', {
       'Calculator Type': type,

@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatIndianRupees, cn, formatIndianShort } from '../lib/utils';
-import { toPng } from 'html-to-image';
 
 const safeNum = (val: any, fallback = 0): number => {
   const n = parseFloat(val);
@@ -25,7 +24,7 @@ interface ShareVisionProps {
   mainLabel: string;
   secondaryValues: { label: string; value: string | number }[];
   insight: string | React.ReactNode;
-  category: 'grow' | 'buy' | 'borrow';
+  category: 'grow' | 'buy' | 'borrow' | 'plan';
   inputs: any;
   onSave: () => void;
 }
@@ -677,6 +676,8 @@ export default function ShareVision({
         setIsSaving(true);
         setError(null);
         
+        const { toPng } = await import('html-to-image');
+        
         // Small delay to ensure styles are applied
         await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -685,6 +686,7 @@ export default function ShareVision({
           quality: 1.0,
           pixelRatio: 3,
           skipAutoScale: true,
+          fontEmbedCSS: "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@700;800;900&display=swap');",
           style: {
             transform: 'none',
           }

@@ -3,6 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import * as HelmetAsync from 'react-helmet-async';
 import App from './App';
+import './index.css';
 
 // Shim for CommonJS modules that expect 'module' to be defined
 if (typeof module === 'undefined') {

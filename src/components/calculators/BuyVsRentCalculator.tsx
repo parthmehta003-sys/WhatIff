@@ -20,6 +20,7 @@ import ShareVision from '../ShareVision';
 import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
+import InsightFeedback from '../InsightFeedback';
 import { Screen } from '../../App';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
@@ -203,7 +204,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
             <BarChart3 className="w-6 h-6 text-emerald-500" />
             Buy vs Rent Calculator
           </h1>
-          <p className="text-zinc-500 text-sm">Is buying actually better than renting and investing the difference?</p>
+          <p className="text-zinc-300 text-sm">Is buying actually better than renting and investing the difference?</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -377,7 +378,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
               {/* Buy Column */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <div className="w-2 h-2 rounded-full bg-zinc-500" />
                   <h4 className={cn("text-sm font-bold uppercase tracking-widest transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>BUY</h4>
                 </div>
                 
@@ -406,7 +407,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
               {/* Rent Column */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <h4 className={cn("text-sm font-bold uppercase tracking-widest transition-colors duration-300", isDark ? "text-white" : "text-zinc-900")}>RENT + INVEST</h4>
                 </div>
 
@@ -504,8 +505,8 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
                   isAnimationActive={false}
                   type="monotone" 
                   dataKey="buyNetWorth" 
-                  name="Buying"
-                  stroke={result.netWorthBuy >= result.netWorthRent ? "#10b981" : "#a1a1aa"} 
+                  name="Buy"
+                  stroke="#a1a1aa" 
                   strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 6 }}
@@ -514,8 +515,8 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
                   isAnimationActive={false}
                   type="monotone" 
                   dataKey="rentNetWorth" 
-                  name="Renting"
-                  stroke={result.netWorthRent > result.netWorthBuy ? "#10b981" : "#a1a1aa"} 
+                  name="Rent + Invest"
+                  stroke="#10b981" 
                   strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 6 }}
@@ -528,6 +529,18 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
               </LineChart>
             </ResponsiveContainer>
           )}
+        </div>
+        
+        {/* Custom Legend */}
+        <div className="flex items-center justify-center gap-8 mt-6 pt-6 border-t border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-3 h-3 rounded-full bg-[#a1a1aa]" />
+            <span className={cn("text-xs font-bold uppercase tracking-widest", isDark ? "text-zinc-400" : "text-zinc-500")}>Buy</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-3 h-3 rounded-full bg-[#10b981]" />
+            <span className={cn("text-xs font-bold uppercase tracking-widest", isDark ? "text-zinc-400" : "text-zinc-500")}>Rent + Invest</span>
+          </div>
         </div>
       </div>
 
@@ -570,6 +583,12 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
         }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="BuyVsRentCalculator" 
+        />
+      </footer>
     </div>
   );
 }

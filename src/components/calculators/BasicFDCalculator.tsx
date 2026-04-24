@@ -140,15 +140,22 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
     const totalTax = result.grossInterest * (taxSlab / 100);
     const taxPayable = Math.max(0, totalTax - tdsDeducted);
     const postTaxInterest = result.grossInterest - totalTax;
-    const postTaxRate = (postTaxInterest / principal) * (12 / tenure) * 100;
-    const postTaxRealReturn = ((1 + postTaxRate / 100) / (1 + INFLATION_RATE / 100) - 1) * 100;
+    const postTaxMaturity = principal + postTaxInterest;
+    const tenureYears = tenure / 12;
+    const realValue = postTaxMaturity / Math.pow(1 + INFLATION_RATE / 100, tenureYears);
+    let postTaxRealReturn = ((realValue / principal) - 1) * 100;
+
+    // Safety check requested: ensure return is negative if real value is below principal
+    if (realValue < principal && postTaxRealReturn > 0) {
+      postTaxRealReturn = -postTaxRealReturn;
+    }
 
     return {
       tdsDeducted: Math.round(tdsDeducted),
       taxPayable: Math.round(taxPayable),
       postTaxInterest: Math.round(postTaxInterest),
       postTaxMaturityAmount: Math.round(result.maturityAmount - totalTax),
-      postTaxRate: Math.round(postTaxRate * 100) / 100,
+      postTaxRate: Math.round((postTaxInterest / principal) * (12 / tenure) * 100 * 100) / 100,
       postTaxRealReturn: Math.round(postTaxRealReturn * 100) / 100,
       isTDSApplicable: annualInterest > threshold,
       threshold,
@@ -162,7 +169,8 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
     const purchasingPowerLoss = inflationAdjustedPrincipal - principal;
     const realSurplus = result.maturityAmount - inflationAdjustedPrincipal;
     const postTaxMaturity = principal + (result.grossInterest * (1 - taxSlab / 100));
-    const realReturnRate = tenureYears > 0 ? (Math.pow(postTaxMaturity / principal, 1 / tenureYears) - 1) * 100 : 0;
+    const realValue = postTaxMaturity / Math.pow(1 + INFLATION_RATE / 100, tenureYears);
+    const realReturnRate = ((realValue / principal) - 1) * 100;
     const threshold = citizenType === 'Senior' ? 50000 : 40000;
     const annualInterest = result.grossInterest * (12 / tenure);
 
@@ -421,7 +429,7 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
           </h1>
           <p className={cn(
             "text-sm transition-colors duration-300",
-            theme === 'dark' ? "text-zinc-500" : "text-zinc-600"
+            theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
           )}>Calculate your fixed deposit returns and tax impact.</p>
         </div>
         <div className="flex items-center gap-2">

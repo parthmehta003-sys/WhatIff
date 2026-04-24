@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Home,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle2
 } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../aiInsightPrompt';
 import { motion } from 'motion/react';
@@ -45,6 +46,7 @@ const typeDisplayNames: Record<string, string> = {
   'affordability': 'Loan Affordability',
   'home_purchase': 'Home Purchase',
   'prepay_vs_invest': 'Prepay vs Invest',
+  'child_future_planner': "Child's Future",
 };
 
 const typeIcons = {
@@ -57,6 +59,7 @@ const typeIcons = {
   prepay_vs_invest: ArrowUpRight,
   staggered_fd: TrendingUp,
   buy_vs_rent: Home,
+  child_future_planner: Sparkles,
 };
 
 const typeColors = {
@@ -69,6 +72,7 @@ const typeColors = {
   prepay_vs_invest: 'text-purple-500',
   staggered_fd: 'text-emerald-500',
   buy_vs_rent: 'text-emerald-500',
+  child_future_planner: 'text-amber-500',
 };
 
 function buildComparisonPrompt(scenarios: SavedScenario[], type: string, mostAchievableName: string) {
@@ -222,6 +226,14 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
             const maxInt = Math.max(...others.map(o => o.outputs.postTaxInterest || 0));
             return s.outputs.postTaxInterest === maxInt;
           }
+        };
+      case 'child_future_planner':
+        return {
+          key: s.outputs.totalSIP || 0,
+          label: 'Total Monthly SIP',
+          sec1: { label: 'Min SIP', value: formatIndianRupees(Math.min(s.outputs.sipA || 0, s.outputs.sipB || 0, s.outputs.sipC || 0) || 0), color: 'emerald' },
+          sec2: { label: 'Max SIP', value: formatIndianRupees(Math.max(s.outputs.sipA || 0, s.outputs.sipB || 0, s.outputs.sipC || 0) || 0), color: 'white' },
+          isBest: () => false // No winner for child future planner
         };
       case 'buy_vs_rent':
         // Bug 1: Ensure we have all data. If missing, re-calculate from inputs.
@@ -568,7 +580,7 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
                   isWinner && "shadow-[0_0_20px_rgba(16,185,129,0.1)] border-emerald-500/20"
                 )}
               >
-                {isWinner && (
+                {isWinner && type !== 'child_future_planner' && (
                   <div className="absolute top-0 right-0">
                     <div className="bg-emerald-500 text-zinc-950 text-[9px] font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1 uppercase tracking-widest">
                       <Trophy className="w-3 h-3" />
@@ -577,7 +589,9 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
                   </div>
                 )}
 
-                <h4 className="text-lg font-bold text-white truncate pr-16">{s.name}</h4>
+                <h4 className="text-lg font-bold text-white truncate pr-16">
+                  {type === 'child_future_planner' ? `Child ${i + 1}` : s.name}
+                </h4>
 
                 {/* Arc Chart */}
                 <div className="space-y-4">
@@ -655,6 +669,37 @@ export default function ComparisonView({ ids, onBack }: ComparisonViewProps) {
                     <div className="space-y-1">
                       <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Monthly SIP</p>
                       <p className="text-sm font-bold text-white">{formatIndianRupees(s.outputs.rentMonthlySIP || 0)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {s.type === 'child_future_planner' && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-white/5">
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">SIP A (School)</p>
+                      <p className="text-xs font-bold text-amber-500">{formatIndianRupees(s.outputs.sipA || 0)}/mo</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">SIP B (College)</p>
+                      <p className="text-xs font-bold text-emerald-500">{formatIndianRupees(s.outputs.sipB || 0)}/mo</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">SIP C (Wedding)</p>
+                      <p className="text-xs font-bold text-purple-500">{formatIndianRupees(s.outputs.sipC || 0)}/mo</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">School Burden</p>
+                      <p className="text-xs font-bold text-zinc-300">{formatIndianRupees(s.outputs.schoolBurden || 0)}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">College Funded</p>
+                      <p className="text-[10px] font-bold text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-2.5 h-2.5" /> YES</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Wedding Funded</p>
+                      <p className={cn("text-[10px] font-bold flex items-center gap-1", s.outputs.weddingFunded ? "text-purple-500" : "text-zinc-500")}>
+                        {s.outputs.weddingFunded ? <CheckCircle2 className="w-2.5 h-2.5" /> : null} {s.outputs.weddingFunded ? "YES" : "NO"}
+                      </p>
                     </div>
                   </div>
                 )}

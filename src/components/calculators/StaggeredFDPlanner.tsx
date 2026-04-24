@@ -26,6 +26,7 @@ import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -316,7 +317,7 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal, onAskAI }
           </h1>
           <p className={cn(
             "text-sm",
-            theme === 'dark' ? "text-zinc-500" : "text-zinc-600"
+            theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
           )}>Optimize your emergency fund for liquidity and returns.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -1122,6 +1123,12 @@ export default function StaggeredFDPlanner({ onBack, initialPrincipal, onAskAI }
         }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="StaggeredFDPlanner" 
+        />
+      </footer>
     </div>
   );
 }

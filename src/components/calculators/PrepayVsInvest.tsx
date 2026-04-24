@@ -40,6 +40,7 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 import { Screen } from '../../App';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
@@ -259,6 +260,14 @@ export default function PrepayVsInvest({ onBack, onNavigate, onAskAI }: PrepayVs
                     <button onClick={handleExport} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors">
                       <Download className="w-5 h-5" />
                     </button>
+                    <SaveScenarioButton 
+                      type="prepay_vs_invest" 
+                      inputs={{ outstanding, rate, tenure, extra, sipReturn, taxBracket, isOldRegime, isELSS, is80CUsed, reinvestTaxSavings }} 
+                      outputs={{ 
+                        ...result, 
+                        mainResult: result.netAdvantage 
+                      }} 
+                    />
                     <button onClick={() => setIsShareOpen(true)} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors">
                       <Share2 className="w-5 h-5" />
                     </button>
@@ -774,6 +783,14 @@ export default function PrepayVsInvest({ onBack, onNavigate, onAskAI }: PrepayVs
         }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      {currentStep === STEPS.length - 1 && (
+        <footer className="py-12 flex justify-center">
+          <InsightFeedback 
+            calculator="PrepayVsInvest" 
+          />
+        </footer>
+      )}
     </div>
   );
 }

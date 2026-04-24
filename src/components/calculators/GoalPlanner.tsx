@@ -14,7 +14,7 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { Target, Info, Share2, Download, Instagram, MessageCircle, Linkedin } from 'lucide-react';
+import { Target, Info, Share2, Download, Instagram, MessageCircle, Linkedin, Baby, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { INFLATION_RATE } from '../../lib/calculators';
 import { formatCurrency, cn, formatCompactNumber, formatIndianRupees, formatIndianShort, formatCurrencyForAI } from '../../lib/utils';
@@ -26,10 +26,12 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface GoalPlannerProps {
   onBack: () => void;
+  onNavigate: (screen: any) => void;
   initialData?: {
     targetAmount?: number;
   };
@@ -54,7 +56,7 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
   return safe.toString();
 };
 
-export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlannerProps) {
+export default function GoalPlanner({ onBack, onNavigate, initialData, onAskAI }: GoalPlannerProps) {
   const theme = useContext(ThemeContext);
   const isDark = theme === 'dark';
   const [goalName, setGoalName] = useState('');
@@ -368,7 +370,7 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
             <Target className="w-6 h-6 text-emerald-500" />
             Goal Planner
           </h1>
-          <p className="text-zinc-500 text-sm">Reverse engineer your financial dreams.</p>
+          <p className="text-zinc-300 text-sm">Reverse engineer your financial dreams.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -431,8 +433,8 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
             label="Target Amount"
             value={targetAmount}
             min={100000}
-            max={50000000}
-            step={100000}
+            max={1000000000}
+            step={500000}
             onChange={setTargetAmount}
             formatDisplay={(v) => formatCurrency(v)}
           />
@@ -776,6 +778,57 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
         maxQuestions={MAX_QUESTIONS}
       />
 
+      {/* Nudge Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className={cn(
+            "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-amber-500",
+            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+          )}
+          onClick={() => onNavigate('child_future_planner')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-amber-500/10" : "bg-amber-100")}>
+                <Baby className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-amber-400" : "text-zinc-900 group-hover:text-amber-600")}>👶 Planning for your child?</h3>
+                <p className="text-xs text-zinc-500">See the true inflation-adjusted cost of raising a child in India.</p>
+              </div>
+            </div>
+            <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className={cn(
+            "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
+            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+          )}
+          onClick={() => onNavigate('prepay_vs_invest')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-purple-500/10" : "bg-purple-100")}>
+                <ArrowUpRight className="w-6 h-6 text-purple-500" />
+              </div>
+              <div>
+                <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900 group-hover:text-purple-600")}>💡 Prepay vs Invest</h3>
+                <p className="text-xs text-zinc-500">Have a loan? See if you should invest this SIP or prepay your loan.</p>
+              </div>
+            </div>
+            <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+          </div>
+        </motion.div>
+      </div>
+
       {/* Investment Platforms */}
       <InvestmentBrokerSection />
 
@@ -795,6 +848,12 @@ export default function GoalPlanner({ onBack, initialData, onAskAI }: GoalPlanne
         inputs={{ targetAmount, years, monthlySIP, requiredReturn }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="GoalPlanner" 
+        />
+      </footer>
     </div>
   );
 }

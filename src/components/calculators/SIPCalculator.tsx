@@ -1,18 +1,6 @@
-import React, { useState, useMemo, useEffect, useContext } from 'react';
+import React, { useState, useMemo, useEffect, useContext, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import { TrendingUp, Info, Share2, Download, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, Info, Share2, Download, ArrowRight, ArrowUpRight, Baby } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { calculateSIP, INFLATION_RATE } from '../../lib/calculators';
@@ -25,8 +13,11 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 import { Screen } from '../../App';
 import { ThemeContext } from '../../contexts/ThemeContext';
+
+const SIPCharts = lazy(() => import('./SIPCharts'));
 
 interface SIPCalculatorProps {
   onBack: () => void;
@@ -332,7 +323,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
               <TrendingUp className="w-6 h-6 text-emerald-500" />
               SIP Calculator
             </h1>
-            <p className="text-zinc-500 text-sm">Systematic Investment Plan growth projection.</p>
+            <p className="text-zinc-300 text-sm">Systematic Investment Plan growth projection.</p>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -367,7 +358,7 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
             label="Monthly Investment"
             value={monthlyInvestment}
             min={500}
-            max={100000}
+            max={1000000}
             step={500}
             onChange={setMonthlyInvestment}
             formatDisplay={(v) => formatCurrency(v)}
@@ -476,153 +467,9 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
       </div>
 
       {!isEmbedded && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Growth Chart */}
-          <div className={cn(
-            "glass-card p-6 min-w-0 transition-colors duration-300",
-            isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
-          )}>
-            <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Growth Projection</h3>
-            <div className="h-[300px] w-full" style={{ minWidth: 0, minHeight: 300 }}>
-              {chartReady && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={results.yearlyData}>
-                    <defs>
-                      <linearGradient id="colorValueSIP" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
-                    <XAxis 
-                      dataKey="year" 
-                      stroke="#a1a1aa" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false}
-                      label={{ value: 'Years', position: 'insideBottom', offset: -5, fill: '#a1a1aa', fontSize: 10 }}
-                    />
-                    <YAxis 
-                      stroke="#a1a1aa" 
-                      fontSize={10} 
-                      tickLine={false} 
-                      axisLine={false}
-                      tickFormatter={(val) => formatCompactNumber(val)}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
-                        borderRadius: '8px',
-                        color: isDark ? '#f4f4f5' : '#09090b'
-                      }}
-                      itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
-                      formatter={(value: number, name: string) => {
-                        const label = name === 'balance' ? 'Total Value' : 
-                                    name === 'investment' ? 'Invested Amount' : 
-                                    name === 'realBalance' ? "Real Value (Today's ₹)" : name;
-                        return [formatCurrency(value), label];
-                      }}
-                      labelFormatter={(label) => `Year ${label}`}
-                    />
-                    <Area 
-                      isAnimationActive={false}
-                      type="monotone" 
-                      dataKey="balance" 
-                      stroke="#10b981" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorValueSIP)" 
-                      name="balance"
-                    />
-                    <Area 
-                      isAnimationActive={false}
-                      type="monotone" 
-                      dataKey="realBalance" 
-                      stroke="#fbbf24" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      fill="transparent"
-                      name="realBalance"
-                    />
-                    <Area 
-                      isAnimationActive={false}
-                      type="monotone" 
-                      dataKey="investment" 
-                      stroke="#a1a1aa" 
-                      strokeWidth={2}
-                      fill="transparent"
-                      name="investment"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-
-          {/* Donut Chart */}
-          <div className={cn(
-            "glass-card p-6 min-w-0 transition-colors duration-300",
-            isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
-          )}>
-            <h3 className="text-sm font-semibold text-zinc-500 mb-6 uppercase tracking-widest">Wealth Breakdown</h3>
-            <div className="h-[300px] w-full relative flex items-center justify-center" style={{ minWidth: 0, minHeight: 300 }}>
-              {chartReady && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Principal', value: results.totalInvested },
-                        { name: 'Real Gain', value: Math.max(0, results.realWealthCreated) },
-                        { name: 'Lost to Inflation', value: results.purchasingPowerLost }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      <Cell fill={isDark ? "#3f3f46" : "#e4e4e7"} />
-                      <Cell fill="#10b981" />
-                      <Cell fill="#fbbf24" />
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e4e4e7', 
-                        borderRadius: '8px' 
-                      }}
-                      itemStyle={{ color: isDark ? '#f4f4f5' : '#09090b' }}
-                      formatter={(value: number) => [formatCurrency(value), '']}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className={cn("text-2xl font-bold", isDark ? "text-white" : "text-zinc-900")}>
-                  {formatCurrency(results.totalValue)}
-                </p>
-                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Total Value</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
-              <div className="flex items-center gap-2">
-                <div className={cn("w-3 h-3 rounded-full", isDark ? "bg-zinc-600" : "bg-zinc-400")} />
-                <span className="text-[11px] text-zinc-500">Principal: {formatCurrency(results.totalInvested)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-[11px] text-zinc-500">Real Gain: {formatCurrency(results.realWealthCreated)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="text-[11px] text-zinc-500">Lost to Inflation: {formatCurrency(results.purchasingPowerLost)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={<div className="h-[300px] flex items-center justify-center text-zinc-500">Loading charts...</div>}>
+          <SIPCharts isDark={isDark} results={results} chartReady={chartReady} />
+        </Suspense>
       )}
 
       <WhatiffInsights 
@@ -650,18 +497,43 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
         maxQuestions={MAX_QUESTIONS}
       />
 
-      {/* Nudge Card */}
+      {/* Nudge Cards */}
       {!isEmbedded && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className={cn(
-            "glass-card p-6 mb-8 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
-            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
-          )}
-          onClick={() => onNavigate('prepay_vs_invest')}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className={cn(
+              "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-amber-500",
+              isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+            )}
+            onClick={() => onNavigate('child_future_planner')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-amber-500/10" : "bg-amber-100")}>
+                  <Baby className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-amber-400" : "text-zinc-900 group-hover:text-amber-600")}>👶 Planning for your child?</h3>
+                  <p className="text-xs text-zinc-500">See the true inflation-adjusted cost of raising a child in India.</p>
+                </div>
+              </div>
+              <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className={cn(
+              "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
+              isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+            )}
+            onClick={() => onNavigate('prepay_vs_invest')}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-purple-500/10" : "bg-purple-100")}>
@@ -674,7 +546,8 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
               </div>
               <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
             </div>
-        </motion.div>
+          </motion.div>
+        </div>
       )}
 
       {/* Investment Platforms */}
@@ -699,6 +572,14 @@ export default function SIPCalculator({ onBack, onNavigate, isEmbedded = false, 
           inputs={{ monthlyInvestment, annualRate, years, stepUp, realCorpus: result.realCorpus, purchasingPowerLost: result.purchasingPowerLost, realReturns: result.realReturns }}
           onSave={() => setIsShareOpen(false)}
         />
+      )}
+
+      {!isEmbedded && (
+        <footer className="py-12 flex justify-center">
+          <InsightFeedback 
+            calculator="SIPCalculator" 
+          />
+        </footer>
       )}
     </div>
   );

@@ -27,6 +27,7 @@ import { Screen } from '../../App';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 import SliderWithInput from '../SliderWithInput';
+import InsightFeedback from '../InsightFeedback';
 
 const CITIES = [
   { name: "Bengaluru", areas: ["Whitefield", "Koramangala", "HSR Layout", "Indiranagar", "Electronic City"] },
@@ -287,7 +288,7 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
             <Home className="w-6 h-6 text-blue-500" />
             Home Purchase Readiness
           </h1>
-          <p className="text-zinc-500 text-sm">Can you buy that dream home?</p>
+          <p className="text-zinc-300 text-sm">Can you buy that dream home?</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -771,6 +772,12 @@ export default function HomePurchaseCalculator({ onBack, onNavigate, onAskAI }: 
         inputs={{ price, salary, savings, city, monthlyEMI, emiToIncome: Math.round((monthlyEMI / salary) * 100), propertyPrice: price, downPayment, loanAmount: loanAmt }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="HomePurchaseCalculator" 
+        />
+      </footer>
     </div>
   );
 }

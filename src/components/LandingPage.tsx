@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, lazy } from 'react';
+import React, { useState, useEffect, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import Footer from './Footer';
+import BackgroundAnimation from './BackgroundAnimation';
 
-import SIPCalculator from './calculators/SIPCalculator';
+const SIPCalculator = lazy(() => import('./calculators/SIPCalculator'));
 
 interface LandingPageProps {
   onStart: () => void;
@@ -13,7 +14,6 @@ interface LandingPageProps {
 
 export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
   const [scrolled, setScrolled] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,135 +23,9 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationFrameId: number;
-    
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', resize);
-    resize();
-
-    // Animation objects
-    const coins = Array.from({ length: 6 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      size: 20 + Math.random() * 20,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.02,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      color: ['#10b981', '#8b5cf6', '#06b6d4'][Math.floor(Math.random() * 3)]
-    }));
-
-    const shapes = Array.from({ length: 8 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      size: 15 + Math.random() * 25,
-      type: ['triangle', 'square', 'hexagon'][Math.floor(Math.random() * 3)],
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.01,
-    }));
-
-    const orbs = [
-      { x: canvas.width * 0.2, y: canvas.height * 0.3, color: '#10b981', size: 300 },
-      { x: canvas.width * 0.8, y: canvas.height * 0.7, color: '#8b5cf6', size: 350 },
-      { x: canvas.width * 0.5, y: canvas.height * 0.5, color: '#06b6d4', size: 250 }
-    ];
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw Orbs
-      orbs.forEach(orb => {
-        const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.size);
-        gradient.addColorStop(0, orb.color + '15'); // Very low opacity
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      });
-
-      // Draw Graph Line
-      ctx.beginPath();
-      ctx.strokeStyle = '#10b98120';
-      ctx.lineWidth = 2;
-      ctx.moveTo(0, canvas.height * 0.8);
-      for (let i = 0; i < canvas.width; i += 50) {
-        ctx.lineTo(i, canvas.height * (0.8 - (i / canvas.width) * 0.5 + Math.sin(i * 0.01) * 0.05));
-      }
-      ctx.stroke();
-
-      // Draw Coins
-      coins.forEach(coin => {
-        ctx.save();
-        ctx.translate(coin.x, coin.y);
-        ctx.rotate(coin.rotation);
-        ctx.strokeStyle = coin.color;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, coin.size, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.font = `${coin.size}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = coin.color;
-        ctx.fillText('₹', 0, 0);
-        ctx.restore();
-
-        coin.x = (coin.x + coin.vx + canvas.width) % canvas.width;
-        coin.y = (coin.y + coin.vy + canvas.height) % canvas.height;
-        coin.rotation += coin.rotationSpeed;
-      });
-
-      // Draw Shapes
-      shapes.forEach(shape => {
-        ctx.save();
-        ctx.translate(shape.x, shape.y);
-        ctx.rotate(shape.rotation);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        if (shape.type === 'triangle') {
-          ctx.moveTo(0, -shape.size);
-          ctx.lineTo(shape.size, shape.size);
-          ctx.lineTo(-shape.size, shape.size);
-          ctx.closePath();
-        } else if (shape.type === 'square') {
-          ctx.rect(-shape.size/2, -shape.size/2, shape.size, shape.size);
-        } else {
-          for (let i = 0; i < 6; i++) {
-            ctx.lineTo(shape.size * Math.cos(i * Math.PI / 3), shape.size * Math.sin(i * Math.PI / 3));
-          }
-          ctx.closePath();
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        shape.x = (shape.x + shape.vx + canvas.width) % canvas.width;
-        shape.y = (shape.y + shape.vy + canvas.height) % canvas.height;
-        shape.rotation += shape.rotationSpeed;
-      });
-
-      animationFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
   const [sipValues, setSipValues] = useState({ monthlyInvestment: 5000, annualRate: 12, years: 10, stepUp: 0 });
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [currentFeature, setCurrentFeature] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(1);
 
   useEffect(() => {
@@ -195,12 +69,46 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       author: "Tanvi Dhurandhar",
       role: "Entrepreneur",
       image: "/Tanvi-Testimonial.jpg"
+    }
+  ];
+
+  const features = [
+    {
+      id: 'privacy',
+      icon: '🔒',
+      title: 'Privacy',
+      description: 'Your numbers never leave your device.',
+      accent: '#10b981',
+      bgGlow: 'rgba(16,185,129,0.25)',
+      pills: ["No Login", "No Account", "No Data Collection", "Free to Use"]
     },
     {
-      quote: "I always thought I had a decent plan, but this showed me where I actually stand. That clarity is what makes it valuable.",
-      author: "Sheenu Gaur",
-      role: "Brand Strategist",
-      image: "/Sheenu-Testimonial.png"
+      id: 'intelligence',
+      icon: '🤖',
+      title: 'Intelligence',
+      description: 'Explains what your numbers mean.',
+      accent: '#8b5cf6',
+      bgGlow: 'rgba(139,92,246,0.25)',
+      pills: ["🤖 Insights", "📊 Export to Excel", "📲 Share Your Vision", "💬 AI chat"]
+    },
+    {
+      id: 'context',
+      icon: '🎯',
+      title: 'Context-Aware',
+      description: 'Calculators that understand your real world — not just your numbers.',
+      accent: '#f59e0b',
+      bgGlow: 'rgba(245,158,11,0.25)',
+      pills: ["🔗 Interlinked Calculators", "💡 Smart Nudges", "🧾 Tax-Aware", "📉 Inflation-Adjusted"],
+      isCustomIcon: true
+    },
+    {
+      id: 'action',
+      icon: '⚡',
+      title: 'Action',
+      description: 'From insight to action in one tap.',
+      accent: '#06b6d4',
+      bgGlow: 'rgba(6,182,212,0.25)',
+      pills: ["⚡ Compare Scenarios", "🏦 Execute Your Plan"]
     }
   ];
 
@@ -220,12 +128,29 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
     });
   };
 
+  const nextFeature = React.useCallback(() => {
+    setCurrentFeature((prev) => {
+      const maxIndex = Math.max(0, features.length - itemsToShow);
+      if (prev >= maxIndex) return 0;
+      return prev + 1;
+    });
+  }, [features.length, itemsToShow]);
+
+  const prevFeature = () => {
+    setCurrentFeature((prev) => {
+      const maxIndex = Math.max(0, features.length - itemsToShow);
+      if (prev <= 0) return maxIndex;
+      return prev - 1;
+    });
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       nextTestimonial();
+      nextFeature();
     }, 5000);
     return () => clearInterval(interval);
-  }, [nextTestimonial]);
+  }, [nextTestimonial, nextFeature]);
 
   const handleFullBreakdown = () => {
     localStorage.setItem('sipPreFill', JSON.stringify({
@@ -246,6 +171,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
 
   return (
     <div style={{ background: '#09090b', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
+      <BackgroundAnimation />
       <Helmet>
         <title>WhatIff — Free Financial Calculators for Indian Investors</title>
         <meta name="description" content="Free privacy-first financial calculators for SIP, EMI, retirement planning, home purchase & more. Built for young Indian investors. No login required." />
@@ -298,10 +224,6 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         textAlign: 'center',
         padding: '0 24px'
       }}>
-        <canvas 
-          ref={canvasRef} 
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }} 
-        />
         <div style={{ 
           position: 'absolute', 
           inset: 0, 
@@ -325,7 +247,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
             NO LOGIN · NO SIGN UP · NO BS
           </motion.div>
 
-          <motion.h1 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} style={{
+          <motion.h1 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0 }} style={{
             fontSize: 'clamp(24px, 4.5vw, 44px)',
             fontWeight: 900,
             lineHeight: 1.1,
@@ -430,7 +352,13 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           flexDirection: 'column',
           justifyContent: 'center'
         }}>
-          <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
+          <React.Suspense fallback={
+            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+          }>
+            <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
+          </React.Suspense>
           
           <button 
             onClick={handleFullBreakdown}
@@ -611,104 +539,143 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       </section>
 
       {/* Features Section */}
-      <section style={{ padding: '40px 24px 40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ color: '#10b981', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>THE DIFFERENCE</div>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, color: '#fff' }}>WhatIff is different.</h2>
-        </div>
-
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'row', 
-          gap: '16px', 
-          maxWidth: '1000px', 
-          margin: '0 auto', 
-          overflowX: 'auto', 
-          padding: '20px 4px',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch'
-        }}>
-          {/* Card 1: Privacy */}
-          <div style={{ 
-            background: 'rgba(255,255,255,0.03)', 
-            border: '1px solid rgba(255,255,255,0.07)', 
-            borderRadius: '20px', 
-            padding: '28px 24px', 
-            position: 'relative', 
-            overflow: 'hidden',
-            minWidth: '280px',
-            flex: '1 0 0'
-          }}>
-            <div style={{ 
-              position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', 
-              background: 'radial-gradient(circle, rgba(16,185,129,0.25) 0%, transparent 70%)' 
-            }} />
-            <div style={{ fontSize: '24px', marginBottom: '12px' }}>🔒</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Privacy</h3>
-            <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>Your numbers never leave your device.</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {["No Login", "No Account", "No Data Collection", "Free to Use"].map(p => (
-                <span key={p} style={{ 
-                  background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', 
-                  color: '#10b981', borderRadius: '99px', padding: '4px 10px', fontSize: '11px', fontWeight: 600 
-                }}>{p}</span>
-              ))}
-            </div>
+      <section style={{ padding: '40px 24px 100px', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <div style={{ color: '#10b981', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', marginBottom: '8px' }}>THE DIFFERENCE</div>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 36px)', fontWeight: 800, color: '#fff' }}>WhatIff is different.</h2>
           </div>
 
-          {/* Card 2: Intelligence */}
-          <div style={{ 
-            background: 'rgba(255,255,255,0.03)', 
-            border: '1px solid rgba(255,255,255,0.07)', 
-            borderRadius: '20px', 
-            padding: '28px 24px', 
-            position: 'relative', 
-            overflow: 'hidden',
-            minWidth: '280px',
-            flex: '1 0 0'
-          }}>
-            <div style={{ 
-              position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', 
-              background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%)' 
-            }} />
-            <div style={{ fontSize: '24px', marginBottom: '12px' }}>🤖</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Intelligence</h3>
-            <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>Explains what your numbers mean.</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {["🤖 Insights", "📊 Export to Excel", "📲 Share Your Vision", "💬 AI chat"].map(p => (
-                <span key={p} style={{ 
-                  background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', 
-                  color: '#8b5cf6', borderRadius: '99px', padding: '4px 10px', fontSize: '11px', fontWeight: 600 
-                }}>{p}</span>
-              ))}
-            </div>
-          </div>
+          <div style={{ position: 'relative', maxWidth: '1200px', margin: '0 auto', overflow: 'hidden' }}>
+            <motion.div
+              animate={{ x: `-${currentFeature * (100 / itemsToShow)}%` }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              style={{
+                display: 'flex',
+                width: '100%'
+              }}
+            >
+              {features.map((feature, index) => (
+                <div 
+                  key={index} 
+                  style={{ 
+                    flex: `0 0 ${100 / itemsToShow}%`,
+                    padding: '0 12px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      borderRadius: '20px',
+                      padding: '28px 24px',
+                      height: '100%',
+                      minHeight: '280px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', 
+                      background: `radial-gradient(circle, ${feature.bgGlow} 0%, transparent 70%)` 
+                    }} />
+                    
+                    {feature.isCustomIcon ? (
+                      <div style={{ 
+                        width: '40px', height: '40px', background: 'rgba(245,158,11,0.18)', 
+                        borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '20px', marginBottom: '16px' 
+                      }}>{feature.icon}</div>
+                    ) : (
+                      <div style={{ fontSize: '24px', marginBottom: '12px' }}>{feature.icon}</div>
+                    )}
 
-          {/* Card 3: Action */}
-          <div style={{ 
-            background: 'rgba(255,255,255,0.03)', 
-            border: '1px solid rgba(255,255,255,0.07)', 
-            borderRadius: '20px', 
-            padding: '28px 24px', 
-            position: 'relative', 
-            overflow: 'hidden',
-            minWidth: '280px',
-            flex: '1 0 0'
-          }}>
-            <div style={{ 
-              position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', 
-              background: 'radial-gradient(circle, rgba(6,182,212,0.25) 0%, transparent 70%)' 
-            }} />
-            <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚡</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Action</h3>
-            <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>From insight to action in one tap.</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {["⚡ Compare Scenarios", "🏦 Execute Your Plan"].map(p => (
-                <span key={p} style={{ 
-                  background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', 
-                  color: '#06b6d4', borderRadius: '99px', padding: '4px 10px', fontSize: '11px', fontWeight: 600 
-                }}>{p}</span>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: feature.isCustomIcon ? '8px' : '4px', color: feature.isCustomIcon ? 'white' : 'inherit' }}>{feature.title}</h3>
+                    <p style={{ 
+                      color: feature.isCustomIcon ? '#fff' : '#a1a1aa', 
+                      fontSize: '14px', 
+                      fontWeight: 400,
+                      lineHeight: feature.isCustomIcon ? 1.4 : 1.6,
+                      marginBottom: '16px' 
+                    }}>
+                      {feature.description}
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 'auto' }}>
+                      {feature.pills.map(p => (
+                        <span key={p} style={{ 
+                          background: `${feature.accent}14`, 
+                          border: `1px solid ${feature.accent}40`, 
+                          color: feature.accent, 
+                          borderRadius: '99px', 
+                          padding: '4px 10px', 
+                          fontSize: '11px', 
+                          fontWeight: 600 
+                        }}>{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Carousel Controls */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '32px', justifyContent: 'center' }}>
+              <button
+                onClick={prevFeature}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={nextFeature}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            {/* Indicators */}
+            <div style={{ display: 'flex', gap: '6px', marginTop: '24px', justifyContent: 'center' }}>
+              {features.slice(0, Math.max(1, features.length - itemsToShow + 1)).map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: idx === currentFeature ? '24px' : '6px',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: idx === currentFeature ? '#10b981' : 'rgba(255,255,255,0.2)',
+                    transition: 'all 0.3s'
+                  }}
+                />
               ))}
             </div>
           </div>

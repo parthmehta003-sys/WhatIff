@@ -306,7 +306,7 @@ export default function LandingView({ onStart, onNavigate }: LandingViewProps) {
           WhatIff is different.
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Card 1 - Privacy */}
           <div className="group relative p-6 rounded-3xl bg-zinc-900/40 border border-white/5 backdrop-blur-xl overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 blur-3xl rounded-full group-hover:bg-emerald-500/20 transition-colors" />
@@ -339,7 +339,23 @@ export default function LandingView({ onStart, onNavigate }: LandingViewProps) {
             </div>
           </div>
 
-          {/* Card 3 - Action */}
+          {/* Card 3 - Context-Aware */}
+          <div className="group relative p-6 rounded-3xl bg-zinc-900/40 border border-white/5 backdrop-blur-xl overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 blur-3xl rounded-full group-hover:bg-amber-500/20 transition-colors" />
+            <div className="relative z-10 space-y-4">
+              <div className="text-amber-500 font-bold tracking-widest uppercase text-[10px]">Context-Aware</div>
+              <h3 className="text-xl font-bold text-white leading-tight">Calculators that understand your real world.</h3>
+              <div className="flex flex-wrap gap-2">
+                {['🔗 Interlinked Calculators', '💡 Smart Nudges', '🧾 Tax-Aware', '📉 Inflation-Adjusted'].map(item => (
+                  <span key={item} className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4 - Action */}
           <div className="group relative p-6 rounded-3xl bg-zinc-900/40 border border-white/5 backdrop-blur-xl overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 blur-3xl rounded-full group-hover:bg-cyan-500/20 transition-colors" />
             <div className="relative z-10 space-y-4">

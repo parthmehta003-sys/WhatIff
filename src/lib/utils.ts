@@ -42,6 +42,10 @@ export function formatIndianShort(amount: number) {
   return `₹${rounded.toLocaleString('en-IN')}`;
 }
 
+export function formatINR(amount: number) {
+  return formatIndianShort(amount);
+}
+
 export function formatCompactNumber(number: number) {
   return new Intl.NumberFormat('en-IN', {
     notation: 'compact',

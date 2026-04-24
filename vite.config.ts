@@ -27,15 +27,11 @@ export default defineConfig(({ ssrBuild }) => {
         'motion/react'
       ],
     },
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
       dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom', 'react-helmet-async'],
-      conditions: ['node', 'import'],
     },
     ssr: {
       noExternal: true,
@@ -44,8 +40,17 @@ export default defineConfig(({ ssrBuild }) => {
       rollupOptions: {
         output: {
           format: 'esm',
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router', 'react-router-dom', 'react-helmet-async'],
+            'vendor-utils': ['clsx', 'tailwind-merge', 'lucide-react', 'motion/react'],
+            'vendor-charts': ['recharts'],
+            'vendor-ai': ['@google/genai', 'openai', 'groq-sdk'],
+          },
         },
       },
+      chunkSizeWarningLimit: 1000,
+      cssCodeSplit: true,
+      minify: 'esbuild',
     },
     server: {
       // HMR is disabled in AI Studio to prevent flickering and port conflicts.

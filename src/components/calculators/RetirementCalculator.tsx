@@ -17,7 +17,8 @@ import {
   Line,
   LabelList
 } from 'recharts';
-import { Palmtree, Info, Share2, AlertTriangle, Download } from 'lucide-react';
+import { Palmtree, Info, Share2, AlertTriangle, Download, Baby, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { motion } from 'motion/react';
 import { GLOBAL_AI_INSTRUCTION } from '../../aiInsightPrompt';
 import { calculateRetirement, calculateRequiredSIP } from '../../lib/calculators';
 import { formatCurrency, formatCompactNumber, formatIndianRupees, formatIndianShort, formatCurrencyForAI, cn } from '../../lib/utils';
@@ -29,10 +30,12 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface RetirementCalculatorProps {
   onBack: () => void;
+  onNavigate: (screen: any) => void;
   onAskAI?: (context?: any) => void;
 }
 
@@ -54,7 +57,7 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
   return safe.toString();
 };
 
-export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalculatorProps) {
+export default function RetirementCalculator({ onBack, onNavigate, onAskAI }: RetirementCalculatorProps) {
   const theme = useContext(ThemeContext);
   const isDark = theme === 'dark';
   const [currentAge, setCurrentAge] = useState(30);
@@ -302,7 +305,7 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
             <Palmtree className="w-6 h-6 text-emerald-500" />
             Retirement Planning
           </h1>
-          <p className="text-zinc-500 text-sm">Plan your financial freedom.</p>
+          <p className="text-zinc-300 text-sm">Plan your financial freedom.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -676,6 +679,57 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
         maxQuestions={MAX_QUESTIONS}
       />
 
+      {/* Nudge Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className={cn(
+            "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-amber-500",
+            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+          )}
+          onClick={() => onNavigate('child_future_planner')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-amber-500/10" : "bg-amber-100")}>
+                <Baby className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-amber-400" : "text-zinc-900 group-hover:text-amber-600")}>👶 Planning for your child?</h3>
+                <p className="text-xs text-zinc-500">See the true inflation-adjusted cost of raising a child in India.</p>
+              </div>
+            </div>
+            <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className={cn(
+            "glass-card p-6 cursor-pointer group transition-all duration-300 border-l-4 border-l-purple-500",
+            isDark ? "bg-white/5 hover:bg-white/10 border-white/5" : "bg-white hover:bg-zinc-50 border-zinc-200 shadow-sm"
+          )}
+          onClick={() => onNavigate('prepay_vs_invest')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", isDark ? "bg-purple-500/10" : "bg-purple-100")}>
+                <ArrowUpRight className="w-6 h-6 text-purple-500" />
+              </div>
+              <div>
+                <h3 className={cn("font-bold transition-colors", isDark ? "text-white group-hover:text-purple-400" : "text-zinc-900 group-hover:text-purple-600")}>💡 Prepay vs Invest</h3>
+                <p className="text-xs text-zinc-500">Have a loan? See if you should invest this SIP or prepay your loan.</p>
+              </div>
+            </div>
+            <ArrowRight className={cn("w-5 h-5 transition-all", isDark ? "text-zinc-600 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-900")} />
+          </div>
+        </motion.div>
+      </div>
+
       <InvestmentBrokerSection />
 
       <ShareVision 
@@ -709,6 +763,12 @@ export default function RetirementCalculator({ onBack, onAskAI }: RetirementCalc
         }}
         onSave={handleSave}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="RetirementCalculator" 
+        />
+      </footer>
     </div>
   );
 }

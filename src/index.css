@@ -1,11 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&family=DM+Sans:wght@400;500;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-serif: "Cormorant Garamond", serif;
-  --font-display: "Outfit", sans-serif;
+  --font-display: "DM Sans", "Outfit", sans-serif;
   
   --color-teal-500: #14b8a6;
   --color-teal-600: #0d9488;

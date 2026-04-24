@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   CreditCard, 
@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Home,
   HelpCircle,
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Screen } from '../App';
@@ -22,6 +23,7 @@ import { storage, SavedScenario } from '../lib/storage';
 import DisclaimerModal from './DisclaimerModal';
 import TypewriterText from './TypewriterText';
 import InsightFeedback from './InsightFeedback';
+import BackgroundAnimation from './BackgroundAnimation';
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;
@@ -36,16 +38,7 @@ const calculators = [
     icon: TrendingUp,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    tag: 'Grow',
-  },
-  {
-    id: 'emi' as Screen,
-    name: 'EMI Calculator',
-    description: 'Calculate monthly loan repayments and interest.',
-    icon: CreditCard,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/10',
-    tag: 'Borrow',
+    tag: 'GROW',
   },
   {
     id: 'goal' as Screen,
@@ -54,7 +47,7 @@ const calculators = [
     icon: Target,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    tag: 'Grow',
+    tag: 'GROW',
   },
   {
     id: 'retirement' as Screen,
@@ -63,7 +56,7 @@ const calculators = [
     icon: Palmtree,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    tag: 'Grow',
+    tag: 'GROW',
   },
   {
     id: 'basic_fd' as Screen,
@@ -72,7 +65,7 @@ const calculators = [
     icon: TrendingUp,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    tag: 'Grow',
+    tag: 'GROW',
   },
   {
     id: 'staggered_fd' as Screen,
@@ -81,7 +74,16 @@ const calculators = [
     icon: TrendingUp,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    tag: 'Grow',
+    tag: 'GROW',
+  },
+  {
+    id: 'emi' as Screen,
+    name: 'EMI Calculator',
+    description: 'Calculate monthly loan repayments and interest.',
+    icon: CreditCard,
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/10',
+    tag: 'BORROW',
   },
   {
     id: 'affordability' as Screen,
@@ -90,16 +92,7 @@ const calculators = [
     icon: ShieldCheck,
     color: 'text-purple-500',
     bg: 'bg-purple-500/10',
-    tag: 'Borrow',
-  },
-  {
-    id: 'home_purchase' as Screen,
-    name: 'Home Purchase',
-    description: 'Can you buy that dream home? Check EMI and down payment readiness.',
-    icon: Home,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
-    tag: 'Buy',
+    tag: 'BORROW',
   },
   {
     id: 'prepay_vs_invest' as Screen,
@@ -108,7 +101,16 @@ const calculators = [
     icon: ArrowUpRight,
     color: 'text-purple-500',
     bg: 'bg-purple-500/10',
-    tag: 'Borrow',
+    tag: 'BORROW',
+  },
+  {
+    id: 'home_purchase' as Screen,
+    name: 'Home Purchase',
+    description: 'Can you buy that dream home? Check EMI and down payment readiness.',
+    icon: Home,
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10',
+    tag: 'BUY',
   },
   {
     id: 'buy_vs_rent' as Screen,
@@ -117,8 +119,24 @@ const calculators = [
     icon: BarChart3,
     color: 'text-blue-500',
     bg: 'bg-blue-500/10',
-    tag: 'Buy',
+    tag: 'BUY',
   },
+  {
+    id: 'child_future_planner' as Screen,
+    name: "Plan for Your Child's Future",
+    description: "Plan your child's school fees, higher education, and wedding — with the SIP you need to start today.",
+    icon: ArrowUpRight,
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/10',
+    tag: 'PLAN',
+  },
+];
+
+const categories = [
+  { id: 'GROW', name: 'GROW', sub: 'Build your wealth, one step at a time.', color: 'text-emerald-500' },
+  { id: 'BORROW', name: 'BORROW', sub: 'Manage your debt with precision.', color: 'text-purple-500' },
+  { id: 'BUY', name: 'BUY', sub: 'Big purchases, simplified.', color: 'text-blue-500' },
+  { id: 'PLAN', name: 'PLAN', sub: 'Major life decisions, financially mapped.', color: 'text-amber-500' },
 ];
 
 export default function Dashboard({ onNavigate, onCompare }: DashboardProps) {
@@ -126,137 +144,21 @@ export default function Dashboard({ onNavigate, onCompare }: DashboardProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const [showPills, setShowPills] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationFrameId: number;
-    
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', resize);
-    resize();
-
-    // Animation objects
-    const coins = Array.from({ length: 6 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      size: 20 + Math.random() * 20,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.02,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      color: ['#10b981', '#8b5cf6', '#06b6d4'][Math.floor(Math.random() * 3)]
-    }));
-
-    const shapes = Array.from({ length: 8 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      size: 15 + Math.random() * 25,
-      type: ['triangle', 'square', 'hexagon'][Math.floor(Math.random() * 3)],
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.01,
-    }));
-
-    const orbs = [
-      { x: canvas.width * 0.2, y: canvas.height * 0.3, color: '#10b981', size: 300 },
-      { x: canvas.width * 0.8, y: canvas.height * 0.7, color: '#8b5cf6', size: 350 },
-      { x: canvas.width * 0.5, y: canvas.height * 0.5, color: '#06b6d4', size: 250 }
-    ];
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw Orbs
-      orbs.forEach(orb => {
-        const gradient = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.size);
-        gradient.addColorStop(0, orb.color + '15'); // Very low opacity
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      });
-
-      // Draw Graph Line
-      ctx.beginPath();
-      ctx.strokeStyle = '#10b98120';
-      ctx.lineWidth = 2;
-      ctx.moveTo(0, canvas.height * 0.8);
-      for (let i = 0; i < canvas.width; i += 50) {
-        ctx.lineTo(i, canvas.height * (0.8 - (i / canvas.width) * 0.5 + Math.sin(i * 0.01) * 0.05));
-      }
-      ctx.stroke();
-
-      // Draw Coins
-      coins.forEach(coin => {
-        ctx.save();
-        ctx.translate(coin.x, coin.y);
-        ctx.rotate(coin.rotation);
-        ctx.strokeStyle = coin.color;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, coin.size, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.font = `${coin.size}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = coin.color;
-        ctx.fillText('₹', 0, 0);
-        ctx.restore();
-
-        coin.x = (coin.x + coin.vx + canvas.width) % canvas.width;
-        coin.y = (coin.y + coin.vy + canvas.height) % canvas.height;
-        coin.rotation += coin.rotationSpeed;
-      });
-
-      // Draw Shapes
-      shapes.forEach(shape => {
-        ctx.save();
-        ctx.translate(shape.x, shape.y);
-        ctx.rotate(shape.rotation);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        if (shape.type === 'triangle') {
-          ctx.moveTo(0, -shape.size);
-          ctx.lineTo(shape.size, shape.size);
-          ctx.lineTo(-shape.size, shape.size);
-          ctx.closePath();
-        } else if (shape.type === 'square') {
-          ctx.rect(-shape.size/2, -shape.size/2, shape.size, shape.size);
-        } else {
-          for (let i = 0; i < 6; i++) {
-            ctx.lineTo(shape.size * Math.cos(i * Math.PI / 3), shape.size * Math.sin(i * Math.PI / 3));
-          }
-          ctx.closePath();
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        shape.x = (shape.x + shape.vx + canvas.width) % canvas.width;
-        shape.y = (shape.y + shape.vy + canvas.height) % canvas.height;
-        shape.rotation += shape.rotationSpeed;
-      });
-
-      animationFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
+  const [lastFasScore, setLastFasScore] = useState<number | null>(null);
 
   useEffect(() => {
     setSavedScenarios(storage.getScenarios());
+    const saved = localStorage.getItem('whatiff_fas_result');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.score <= 100) {
+          setLastFasScore(parsed.score);
+        }
+      } catch (e) {
+        console.error("Failed to parse scorecard result", e);
+      }
+    }
   }, []);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -275,6 +177,7 @@ export default function Dashboard({ onNavigate, onCompare }: DashboardProps) {
 
   return (
     <div className="relative min-h-screen">
+      <BackgroundAnimation />
       <div className="relative z-10 space-y-12">
       {/* Hero Section */}
       <section className="text-center space-y-2 pt-8 pb-12 relative">
@@ -287,50 +190,133 @@ export default function Dashboard({ onNavigate, onCompare }: DashboardProps) {
         </div>
       </section>
 
-      {/* Calculators Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {calculators.map((calc, index) => (
-          <motion.div
-            key={calc.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            onClick={() => onNavigate(calc.id)}
-            className="group glass-card p-6 text-left hover:bg-white/5 transition-all duration-300 flex flex-col justify-between h-48 cursor-pointer relative"
-          >
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", calc.bg)}>
-                  <calc.icon className={cn("w-6 h-6", calc.color)} />
+      {/* Featured Awareness Score */}
+      <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+        <button 
+          onClick={() => onNavigate('financial_awareness_score')}
+          className="w-full text-left group relative overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] via-amber-500/[0.03] to-transparent p-8 transition-all hover:border-amber-500/40 hover:bg-amber-500/[0.12] active:scale-[0.99]"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+            <div className="space-y-4 max-w-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                  <Sparkles className="w-6 h-6" />
                 </div>
-                <span className={cn("px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider", calc.bg, calc.color)}>
-                  {calc.tag}
-                </span>
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500/80">Independent Assessment</span>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-lg text-white group-hover:text-teal-400 transition-colors">{calc.name}</h3>
-                <p className="text-xs text-zinc-500 line-clamp-2">{calc.description}</p>
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black text-white tracking-tight leading-tight group-hover:text-amber-500 transition-colors">Financial Awareness Score</h2>
+                <p className="text-white text-sm leading-relaxed">
+                  20 questions. 3 minutes. Discover how financially aware you really are across 10 key areas including Emergency funds, Retirement, and Insurance.
+                </p>
+              </div>
+              <div className="flex items-center gap-6 pt-2">
+                <div className="flex items-center gap-2 text-xs font-black text-amber-500 uppercase tracking-widest">
+                  {lastFasScore !== null ? 'Retake Assessment' : 'Start Now'} <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </div>
+                <div className="h-4 w-[1px] bg-white/10" />
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest flex gap-4">
+                  <span>20 Questions</span>
+                  <span>3 Mins</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 group-hover:text-white transition-colors">
-                Open Calculator <ArrowRight className="w-3 h-3" />
-              </div>
+
+            {/* Score Preview */}
+            <div className="relative shrink-0 flex items-center justify-center w-36 h-36 md:w-44 md:h-44">
+               <div className="absolute inset-0 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors" />
+               <div className="relative z-10 flex flex-col items-center">
+                  <span className={cn(
+                    "font-black tracking-tighter leading-none transition-all duration-500",
+                    lastFasScore !== null ? "text-5xl md:text-6xl text-amber-500" : "text-4xl md:text-5xl text-zinc-800"
+                  )}>
+                    {lastFasScore !== null ? lastFasScore : '???'}
+                  </span>
+                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                    {lastFasScore !== null ? 'YOUR SCORE' : 'DISCOVER SCORE'}
+                  </span>
+               </div>
+               
+               {/* Visual decorative ring */}
+               <svg className="absolute inset-0 w-full h-full p-2 -rotate-90">
+                 <circle cx="50%" cy="50%" r="42%" fill="none" stroke="currentColor" className="text-white/[0.03]" strokeWidth="2" strokeDasharray="4 4" />
+                 {lastFasScore !== null && (
+                   <motion.circle 
+                     cx="50%" cy="50%" r="42%" 
+                     fill="none" stroke="currentColor" 
+                     className="text-amber-500/40" 
+                     strokeWidth="4"
+                     strokeDasharray="100 100"
+                     initial={{ strokeDashoffset: 100 }}
+                     animate={{ strokeDashoffset: 100 - lastFasScore }}
+                     transition={{ duration: 1.5, ease: "easeOut" }}
+                   />
+                 )}
+               </svg>
             </div>
-            <button
-              onMouseEnter={(e) => {
-                e.stopPropagation();
-                setIsDisclaimerOpen(true);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDisclaimerOpen(true);
-              }}
-              className="absolute bottom-4 right-4 p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          </motion.div>
+          </div>
+          
+          {/* Background pattern */}
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-amber-500/5 blur-[120px] rounded-full pointer-events-none" />
+        </button>
+      </section>
+
+      {/* Calculators Grid */}
+      <div className="space-y-12">
+        {categories.map((category) => (
+          <div key={category.id} className="space-y-6">
+            <div className="flex flex-col gap-1">
+              <h2 className={cn("text-xl font-black tracking-tighter", category.color)}>{category.name}</h2>
+              <p className="text-xs text-zinc-500 font-medium">{category.sub}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {calculators
+                .filter(calc => calc.tag === category.id)
+                .map((calc, index) => (
+                  <motion.div
+                    key={calc.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => onNavigate(calc.id)}
+                    className="group glass-card p-6 text-left hover:bg-white/5 transition-all duration-300 flex flex-col justify-between h-48 cursor-pointer relative"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", calc.bg)}>
+                          <calc.icon className={cn("w-6 h-6", calc.color)} />
+                        </div>
+                        <span className={cn("px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider", calc.bg, calc.color)}>
+                          {calc.tag}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-lg text-white group-hover:text-teal-400 transition-colors">{calc.name}</h3>
+                        <p className="text-xs text-zinc-500 line-clamp-2">{calc.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 group-hover:text-white transition-colors">
+                        Open Calculator <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                    <button
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        setIsDisclaimerOpen(true);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDisclaimerOpen(true);
+                      }}
+                      className="absolute bottom-4 right-4 p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                ))}
+            </div>
+          </div>
         ))}
       </div>
 

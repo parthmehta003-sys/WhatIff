@@ -27,24 +27,28 @@ import AIChat from './components/AIChat';
 import Footer from './components/Footer';
 import { ThemeContext } from './contexts/ThemeContext';
 
-// Import views synchronously for SSR/Prerendering support
+// Core views (statistically imported for SEO and stability)
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
-import SIPCalculator from './components/calculators/SIPCalculator';
-import EMICalculator from './components/calculators/EMICalculator';
-import GoalPlanner from './components/calculators/GoalPlanner';
-import RetirementCalculator from './components/calculators/RetirementCalculator';
-import LoanAffordability from './components/calculators/LoanAffordability';
-import HomePurchaseCalculator from './components/calculators/HomePurchaseCalculator';
-import StaggeredFDPlanner from './components/calculators/StaggeredFDPlanner';
-import BasicFDCalculator from './components/calculators/BasicFDCalculator';
-import BuyVsRentCalculator from './components/calculators/BuyVsRentCalculator';
-import PrepayVsInvest from './components/calculators/PrepayVsInvest';
-import ComparisonView from './components/ComparisonView';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import TermsOfUse from './components/TermsOfUse';
 
-export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'prepay_vs_invest' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'comparison' | 'privacy' | 'terms';
+// Lazy loaded views
+const SIPCalculator = lazy(() => import('./components/calculators/SIPCalculator'));
+const EMICalculator = lazy(() => import('./components/calculators/EMICalculator'));
+const GoalPlanner = lazy(() => import('./components/calculators/GoalPlanner'));
+const RetirementCalculator = lazy(() => import('./components/calculators/RetirementCalculator'));
+const LoanAffordability = lazy(() => import('./components/calculators/LoanAffordability'));
+const HomePurchaseCalculator = lazy(() => import('./components/calculators/HomePurchaseCalculator'));
+const StaggeredFDPlanner = lazy(() => import('./components/calculators/StaggeredFDPlanner'));
+const BasicFDCalculator = lazy(() => import('./components/calculators/BasicFDCalculator'));
+const BuyVsRentCalculator = lazy(() => import('./components/calculators/BuyVsRentCalculator'));
+const PrepayVsInvest = lazy(() => import('./components/calculators/PrepayVsInvest'));
+const ChildFuturePlanner = lazy(() => import('./components/calculators/ChildFuturePlanner'));
+const FinancialAwarenessScore = lazy(() => import('./components/FinancialAwarenessScore'));
+const ComparisonView = lazy(() => import('./components/ComparisonView'));
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
+const TermsOfUse = lazy(() => import('./components/TermsOfUse'));
+
+export type Screen = 'landing' | 'dashboard' | 'sip' | 'emi' | 'goal' | 'retirement' | 'affordability' | 'home_purchase' | 'prepay_vs_invest' | 'staggered_fd' | 'basic_fd' | 'buy_vs_rent' | 'child_future_planner' | 'financial_awareness_score' | 'comparison' | 'privacy' | 'terms';
 
 const screenToPath: Record<Screen, string> = {
   landing: '/',
@@ -59,6 +63,8 @@ const screenToPath: Record<Screen, string> = {
   staggered_fd: '/staggered-fd-calculator',
   basic_fd: '/fd-calculator',
   buy_vs_rent: '/buy-vs-rent',
+  child_future_planner: '/child-future-planner',
+  financial_awareness_score: '/financial-awareness-score',
   comparison: '/comparison',
   privacy: '/privacy',
   terms: '/terms'
@@ -198,7 +204,10 @@ export default function App() {
         )}
 
         {/* Main Content */}
-        <main className={cn("flex-1 w-full", (currentScreen !== 'landing' && currentScreen !== 'privacy' && currentScreen !== 'terms') && "max-w-5xl mx-auto p-6")}>
+        <main className={cn(
+          "flex-1 w-full", 
+          (currentScreen !== 'landing' && currentScreen !== 'privacy' && currentScreen !== 'terms') && "max-w-5xl mx-auto p-6"
+        )}>
           <AnimatePresence mode="wait">
             <Suspense fallback={
               <div className="min-h-screen flex items-center justify-center">
@@ -217,14 +226,16 @@ export default function App() {
                   <Route path="/dashboard" element={<Dashboard onNavigate={handleNavigate} onCompare={handleCompare} />} />
                   <Route path="/sip-calculator" element={<SIPCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/emi-calculator" element={<EMICalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
-                  <Route path="/goal-planner" element={<GoalPlanner onBack={() => navigate('/dashboard')} initialData={location.state} onAskAI={openChat} />} />
-                  <Route path="/retirement-calculator" element={<RetirementCalculator onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
+                  <Route path="/goal-planner" element={<GoalPlanner onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} initialData={location.state} onAskAI={openChat} />} />
+                  <Route path="/retirement-calculator" element={<RetirementCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/loan-affordability" element={<LoanAffordability onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
                   <Route path="/home-purchase" element={<HomePurchaseCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/prepay-vs-invest" element={<PrepayVsInvest onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/staggered-fd-calculator" element={<StaggeredFDPlanner onBack={() => navigate('/dashboard')} initialPrincipal={location.state?.principal} onAskAI={openChat} />} />
                   <Route path="/fd-calculator" element={<BasicFDCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/buy-vs-rent" element={<BuyVsRentCalculator onBack={() => navigate('/dashboard')} initialData={location.state} onAskAI={openChat} />} />
+                  <Route path="/child-future-planner" element={<ChildFuturePlanner onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
+                  <Route path="/financial-awareness-score" element={<FinancialAwarenessScore onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
                   <Route path="/comparison" element={<ComparisonView ids={selectedScenarioIds} onBack={() => navigate('/dashboard')} />} />
                   <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
                   <Route path="/terms" element={<TermsOfUse onBack={() => navigate(-1)} />} />

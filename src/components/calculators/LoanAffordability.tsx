@@ -24,6 +24,7 @@ import InfoBox, { RiskLevel } from '../InfoBox';
 import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
+import InsightFeedback from '../InsightFeedback';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 interface LoanAffordabilityProps {
@@ -197,7 +198,7 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
             <ShieldCheck className="w-6 h-6 text-purple-500" />
             Loan Affordability
           </h1>
-          <p className="text-zinc-500 text-sm">Check if you can safely afford a new loan.</p>
+          <p className="text-zinc-300 text-sm">Check if you can safely afford a new loan.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -454,6 +455,12 @@ export default function LoanAffordability({ onBack, onAskAI }: LoanAffordability
         inputs={{ monthlyIncome, existingEMI, interestRate, tenure, availableEMI: result.availableEMI, riskLevel: result.riskLevel, income: monthlyIncome }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="LoanAffordability" 
+        />
+      </footer>
     </div>
   );
 }

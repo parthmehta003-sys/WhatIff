@@ -1,7 +1,5 @@
-import * as XLSX from 'xlsx';
-import { formatCurrency } from './utils';
-
-export const exportToExcel = (title: string, description: string, inputs: any, mainLabel: string, mainValue: number, secondaryValues: { label: string; value: string | number }[], insight: string) => {
+export const exportToExcel = async (title: string, description: string, inputs: any, mainLabel: string, mainValue: number, secondaryValues: { label: string; value: string | number }[], insight: string) => {
+  const XLSX = await import('xlsx');
   const data = [
     ['WhatIff Calculation Report'],
     ['Title', title],

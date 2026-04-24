@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Info } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -15,6 +16,7 @@ interface SliderWithInputProps {
   accentColor?: 'emerald' | 'blue' | 'purple' | 'amber' | 'red';
   footerLabel?: string;
   tag?: string;
+  tooltip?: string;
 }
 
 export default function SliderWithInput({
@@ -28,7 +30,8 @@ export default function SliderWithInput({
   className,
   accentColor = 'emerald',
   footerLabel,
-  tag
+  tag,
+  tooltip
 }: SliderWithInputProps) {
   const theme = useContext(ThemeContext);
   const isDark = theme === 'dark';
@@ -117,6 +120,11 @@ export default function SliderWithInput({
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <label className={cn("text-sm font-medium transition-colors duration-300", isDark ? "text-zinc-400" : "text-zinc-600")}>{label}</label>
+          {tooltip && (
+            <span title={tooltip}>
+              <Info className="w-3.5 h-3.5 text-zinc-600 cursor-help" />
+            </span>
+          )}
           {tag && (
             <span className={cn(
               "px-1.5 py-0.5 rounded border text-[8px] font-bold uppercase tracking-wider transition-colors duration-300",

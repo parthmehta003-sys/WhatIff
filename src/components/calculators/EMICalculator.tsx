@@ -26,6 +26,7 @@ import { exportToExcel } from '../../lib/exportUtils';
 import WhatiffInsights from '../WhatiffInsights';
 import SliderWithInput from '../SliderWithInput';
 import AIChat from '../AIChat';
+import InsightFeedback from '../InsightFeedback';
 import { Screen } from '../../App';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
@@ -237,7 +238,7 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
             <CreditCard className="w-6 h-6 text-emerald-500" />
             EMI Calculator
           </h1>
-          <p className="text-zinc-500 text-sm">Calculate your monthly loan installments.</p>
+          <p className="text-zinc-300 text-sm">Calculate your monthly loan installments.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -517,6 +518,12 @@ export default function EMICalculator({ onBack, onNavigate, onAskAI }: EMICalcul
         inputs={{ loanAmount, interestRate, tenure, totalInterest: result.totalInterest, totalPayment: result.totalPayment }}
         onSave={() => setIsShareOpen(false)}
       />
+
+      <footer className="py-12 flex justify-center">
+        <InsightFeedback 
+          calculator="EMICalculator" 
+        />
+      </footer>
     </div>
   );
 }

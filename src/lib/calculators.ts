@@ -277,13 +277,19 @@ export function calculateBasicFD(
   const maturityAmount = principal * Math.pow(1 + r/n, n * t);
   const grossInterest = maturityAmount - principal;
   
-  // Real Return after Inflation formula: ((1 + r) / (1 + i) - 1) * 100
-  const userRealReturn = ((1 + annualRate / 100) / (1 + INFLATION_RATE / 100) - 1) * 100;
+  // Real Return after Inflation formula: Derived from real value to ensure mathematical consistency
+  const realValue = maturityAmount / Math.pow(1 + INFLATION_RATE / 100, t);
+  let realReturn = ((realValue / principal) - 1) * 100;
+  
+  // Safety check: ensure return is negative if real value is below principal
+  if (realValue < principal && realReturn > 0) {
+    realReturn = -realReturn;
+  }
   
   return {
     grossInterest: Math.round(grossInterest),
     maturityAmount: Math.round(maturityAmount),
-    realReturn: Math.round(userRealReturn * 100) / 100
+    realReturn: Math.round(realReturn * 100) / 100
   };
 }
 
@@ -620,6 +626,240 @@ export function calculatePrepayVsInvest(
     },
     netAdvantage: Math.round(netAdvantage),
     winner: netAdvantage > 0 ? 'invest' : 'prepay'
+  };
+}
+
+export interface ChildYearlyData {
+  age: number;
+  yearsFromNow: number;
+  annualLiving: number;
+  inflatedHealthcare: number;
+  inflatedSchoolFee: number;
+  inflatedCollegeFee: number;
+  oneTimeCost: number;
+  total: number;
+}
+
+export interface ChildResult {
+  yearlyData: ChildYearlyData[];
+  totalCostTo18: number;
+  totalCostIncludingCollege: number;
+  peakYearCost: number;
+  peakYearAge: number;
+  educationSharePercent: number;
+  sipNeeded: number;
+  sipForSchool: number;
+  sipForCollege: number;
+}
+
+export function calculateChildFuturePlan(
+  childCurrentAge: number,
+  cityTier: 'metro' | 'tier1' | 'tier2' | 'tier3',
+  lifestyle: 'modest' | 'comfortable' | 'premium',
+  schoolType: 'government' | 'privateUnaided' | 'cbsePrivate' | 'international',
+  higherEducation: 'governmentCollege' | 'privateIndian' | 'iitIimTopPrivate' | 'studyAbroad',
+  educationInflation: number,
+  generalInflation: number,
+  healthcareInflation: number
+): ChildResult {
+  const baseMonthlyCosts = {
+    nutrition:      { modest: 3000,  comfortable: 6000,  premium: 12000 },
+    clothing:       { modest: 1000,  comfortable: 2000,  premium: 5000  },
+    healthcare:     { modest: 1500,  comfortable: 3000,  premium: 6000  },
+    activities:     { modest: 1000,  comfortable: 4000,  premium: 10000 },
+    transport:      { modest: 1000,  comfortable: 2500,  premium: 5000  },
+  };
+
+  const cityMultiplier = {
+    metro: 1.4, tier1: 1.1, tier2: 0.85, tier3: 0.65
+  };
+
+  const schoolFees = {
+    government:    2000,
+    privateUnaided: 40000,
+    cbsePrivate:   120000,
+    international: 600000,
+  };
+
+  const oneTimeCosts = {
+    birth:          { modest: 30000, comfortable: 80000, premium: 200000 },
+    schoolAdmission: { government: 5000, privateUnaided: 20000, cbsePrivate: 50000, international: 200000 },
+    coachingTestPrep: { modest: 20000, comfortable: 80000, premium: 200000 }, // age 15-17
+  };
+
+  const higherEducationCost = {
+    governmentCollege: 100000,    // per year
+    privateIndian:     400000,
+    iitIimTopPrivate:  800000,
+    studyAbroad:       3500000,
+  };
+
+  const yearlyData: ChildYearlyData[] = [];
+  let totalSchoolAndCollege = 0;
+
+  for (let age = childCurrentAge; age <= 22; age++) {
+    const yearsFromNow = age - childCurrentAge;
+    const isSchoolAge = age >= 3 && age <= 17;
+    const isCollegeAge = age >= 18 && age <= 21;
+
+    // Monthly living costs inflation-adjusted
+    const baseMonthly = (
+      baseMonthlyCosts.nutrition[lifestyle] +
+      baseMonthlyCosts.clothing[lifestyle] +
+      baseMonthlyCosts.activities[lifestyle] +
+      baseMonthlyCosts.transport[lifestyle]
+    ) * cityMultiplier[cityTier];
+
+    const inflatedMonthly = baseMonthly * Math.pow(1 + generalInflation/100, yearsFromNow);
+    const annualLiving = inflatedMonthly * 12;
+
+    // Healthcare separately with healthcare inflation
+    const baseHealthcare = baseMonthlyCosts.healthcare[lifestyle] * cityMultiplier[cityTier];
+    const inflatedHealthcare = baseHealthcare * Math.pow(1 + healthcareInflation/100, yearsFromNow) * 12;
+
+    // School fees inflation-adjusted with education inflation
+    const inflatedSchoolFee = isSchoolAge
+      ? schoolFees[schoolType] * Math.pow(1 + educationInflation/100, yearsFromNow)
+      : 0;
+
+    // Higher education inflation-adjusted
+    // FIX 1: Inflate from child's current age to college year
+    const inflatedCollegeFee = isCollegeAge
+      ? higherEducationCost[higherEducation] * Math.pow(1 + educationInflation/100, yearsFromNow)
+      : 0;
+
+    totalSchoolAndCollege += (inflatedSchoolFee + inflatedCollegeFee);
+
+    // One-time costs (not inflated — occur at specific ages)
+    let oneTimeCost = 0;
+    if (age === 0) oneTimeCost += oneTimeCosts.birth[lifestyle];
+    if (age === 3) oneTimeCost += oneTimeCosts.schoolAdmission[schoolType];
+    if (age >= 15 && age <= 17) oneTimeCost += oneTimeCosts.coachingTestPrep[lifestyle] / 3;
+
+    const totalThisYear = annualLiving + inflatedHealthcare + inflatedSchoolFee + inflatedCollegeFee + oneTimeCost;
+
+    yearlyData.push({
+      age,
+      yearsFromNow,
+      annualLiving,
+      inflatedHealthcare,
+      inflatedSchoolFee,
+      inflatedCollegeFee,
+      oneTimeCost,
+      total: totalThisYear
+    });
+  }
+
+  const totalCostTo18 = yearlyData.filter(y => y.age >= childCurrentAge && y.age < 18).reduce((s, y) => s + y.total, 0);
+  const totalCostIncludingCollege = yearlyData.reduce((s, y) => s + y.total, 0);
+  const peakYearCost = Math.max(...yearlyData.map(y => y.total));
+  const peakYear = yearlyData.find(y => y.total === peakYearCost);
+  const educationSharePercent = (totalSchoolAndCollege / totalCostIncludingCollege) * 100;
+
+  // FIX 2: SIP calculation must simulate actual cash flows with annual withdrawals
+  const simulateSIP = (monthlySIP: number, annualWithdrawals: Record<number, number>, monthlyReturn: number, startAge: number, endAge: number) => {
+    let balance = 0;
+    for (let age = startAge; age <= endAge; age++) {
+      // Invest monthly SIP for 12 months
+      for (let m = 0; m < 12; m++) {
+        balance = balance * (1 + monthlyReturn) + monthlySIP;
+      }
+      // Withdraw this year's fee at end of year
+      const fee = annualWithdrawals[age] || 0;
+      balance -= fee;
+    }
+    return balance;
+  };
+
+  const findSIP = (annualWithdrawals: Record<number, number>, monthlyReturn: number, startAge: number, endAge: number) => {
+    let lo = 0, hi = 1000000; // Increased hi for safety
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      const final = simulateSIP(mid, annualWithdrawals, monthlyReturn, startAge, endAge);
+      if (final > 0) hi = mid;
+      else lo = mid;
+    }
+    return Math.round((lo + hi) / 2);
+  };
+
+  const r_monthly = 12 / 100 / 12; // 12% annual return
+
+  // SIP A — SCHOOL FEE FUND
+  const schoolFeesByYear: Record<number, number> = {};
+  for (let age = Math.max(4, childCurrentAge); age <= 17; age++) {
+    const yearsFromNow = age - childCurrentAge;
+    schoolFeesByYear[age] = schoolFees[schoolType] * Math.pow(1 + educationInflation/100, yearsFromNow);
+  }
+
+  const simulateSchoolFund = (monthlySIP: number, schoolFeesByYear: Record<number, number>, monthlyReturn: number, childCurrentAge: number) => {
+    let corpus = 0;
+    const sipStopsAt = 4;
+    for (let age = childCurrentAge; age <= 17; age++) {
+      for (let m = 0; m < 12; m++) {
+        if (age < sipStopsAt) {
+          corpus = corpus * (1 + monthlyReturn) + monthlySIP;
+        } else {
+          corpus = corpus * (1 + monthlyReturn);
+        }
+      }
+      const fee = schoolFeesByYear[age] || 0;
+      corpus -= fee;
+    }
+    return corpus;
+  };
+
+  let sipA = 0;
+  if (childCurrentAge < 4) {
+    let lo = 100, hi = 500000;
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      const final = simulateSchoolFund(mid, schoolFeesByYear, r_monthly, childCurrentAge);
+      if (final > 0) hi = mid;
+      else lo = mid;
+    }
+    sipA = Math.round((lo + hi) / 2);
+  }
+
+  // SIP B — COLLEGE FEE FUND
+  const collegeFeesByYear: Record<number, number> = {};
+  for (let age = 18; age <= 21; age++) {
+    const yearsFromNow = age - childCurrentAge;
+    collegeFeesByYear[age] = higherEducationCost[higherEducation] * Math.pow(1 + educationInflation/100, yearsFromNow);
+  }
+
+  const simulateCollegeFund = (monthlySIP: number, collegeFeesByYear: Record<number, number>, monthlyReturn: number, childCurrentAge: number) => {
+    let corpus = 0;
+    for (let age = childCurrentAge; age <= 21; age++) {
+      for (let m = 0; m < 12; m++) {
+        corpus = corpus * (1 + monthlyReturn) + monthlySIP;
+      }
+      const fee = collegeFeesByYear[age] || 0;
+      corpus -= fee;
+    }
+    return corpus;
+  };
+
+  let lo2 = 100, hi2 = 500000;
+  for (let i = 0; i < 100; i++) {
+    const mid2 = (lo2 + hi2) / 2;
+    const final2 = simulateCollegeFund(mid2, collegeFeesByYear, r_monthly, childCurrentAge);
+    if (final2 > 0) hi2 = mid2;
+    else lo2 = mid2;
+  }
+  const sipB = Math.round((lo2 + hi2) / 2);
+
+  const sipNeeded = sipA + sipB;
+
+  return {
+    yearlyData,
+    totalCostTo18: Math.round(totalCostTo18),
+    totalCostIncludingCollege: Math.round(totalCostIncludingCollege),
+    peakYearCost: Math.round(peakYearCost),
+    peakYearAge: peakYear?.age || 0,
+    educationSharePercent: Math.round(educationSharePercent * 10) / 10,
+    sipNeeded,
+    sipForSchool: sipA,
+    sipForCollege: sipB
   };
 }
 
