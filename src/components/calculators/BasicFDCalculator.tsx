@@ -41,6 +41,8 @@ interface BasicFDCalculatorProps {
   onBack: () => void;
   onNavigate: (screen: Screen, state?: any) => void;
   onAskAI?: (context?: any) => void;
+  isEmbedded?: boolean;
+  onValuesChange?: (values: { principal: number; fdRate: number; tenure: number; taxSlab: number }) => void;
 }
 
 const TOP_BANKS = [
@@ -70,8 +72,9 @@ const formatInsightValue = (val: number, type: 'currency' | 'percent' | 'years' 
   return safe.toString();
 };
 
-export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: BasicFDCalculatorProps) {
+export default function BasicFDCalculator({ onBack, onNavigate, onAskAI, isEmbedded = false, onValuesChange }: BasicFDCalculatorProps) {
   const theme = useContext(ThemeContext);
+  const isDark = theme === 'dark';
   const [principal, setPrincipal] = useState(100000);
   const [fdRate, setFdRate] = useState(6.5);
   const [tenure, setTenure] = useState(12);
@@ -82,6 +85,31 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [barPositions, setBarPositions] = useState<{ x: number; width: number; label: string; index: number }[]>([]);
   const sliderRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const preFill = localStorage.getItem('fdPreFill');
+    if (preFill) {
+      try {
+        const data = JSON.parse(preFill);
+        if (data.source === 'landing') {
+          setPrincipal(data.principal);
+          setFdRate(data.fdRate);
+          setTenure(data.tenure);
+          setTaxSlab(data.taxSlab);
+          if (data.taxSlab > 0) setIsTaxExpanded(true);
+          localStorage.removeItem('fdPreFill');
+        }
+      } catch (e) {
+        localStorage.removeItem('fdPreFill');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (onValuesChange) {
+      onValuesChange({ principal, fdRate, tenure, taxSlab });
+    }
+  }, [principal, fdRate, tenure, taxSlab, onValuesChange]);
 
   // AI Chat State
   const [messages, setMessages] = useState<Message[]>([]);
@@ -412,70 +440,76 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
 
   return (
     <div className={cn(
-      "space-y-8 p-4 md:p-8 min-h-screen transition-colors duration-300",
-      theme === 'dark' ? "bg-zinc-950 text-white" : "bg-zinc-50 text-zinc-900"
+      "space-y-8 transition-colors duration-300",
+      theme === 'dark' ? "text-white" : "text-zinc-900",
+      isEmbedded ? "p-0" : "p-4 md:p-8 min-h-screen",
+      isEmbedded && (theme === 'dark' ? "bg-transparent" : "bg-transparent")
     )}>
-      <Helmet>
-        <title>FD Calculator — Fixed Deposit Returns Calculator | WhatIff</title>
-        <meta name="description" content="Calculate maturity amount and interest earned on your fixed deposit." />
-        <link rel="canonical" href="https://whatiff.in/fd-calculator" />
-      </Helmet>
+      {!isEmbedded && (
+        <Helmet>
+          <title>FD Calculator — Fixed Deposit Returns Calculator | WhatIff</title>
+          <meta name="description" content="Calculate maturity amount and interest earned on your fixed deposit." />
+          <link rel="canonical" href="https://whatiff.in/fd-calculator" />
+        </Helmet>
+      )}
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", theme === 'dark' ? "text-white" : "text-zinc-900")}>
-            <TrendingUp className="w-6 h-6 text-emerald-500" />
-            Basic FD Calculator
-          </h1>
-          <p className={cn(
-            "text-sm transition-colors duration-300",
-            theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
-          )}>Calculate your fixed deposit returns and tax impact.</p>
+      {!isEmbedded && (
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className={cn("text-2xl font-bold flex items-center gap-2 transition-colors duration-300", theme === 'dark' ? "text-white" : "text-zinc-900")}>
+              <TrendingUp className="w-6 h-6 text-emerald-500" />
+              Basic FD Calculator
+            </h1>
+            <p className={cn(
+              "text-sm transition-colors duration-300",
+              theme === 'dark' ? "text-zinc-300" : "text-zinc-600"
+            )}>Calculate your fixed deposit returns and tax impact.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleExport}
+              className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
+              title="Export to Excel"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+            <SaveScenarioButton 
+              type="basic_fd" 
+              defaultName={`FD — ₹${formatIndianRupees(principal)} at ${fdRate}%`}
+              inputs={{ principal, fdRate, tenure, citizenType, taxSlab }} 
+              outputs={{ 
+                mainResult: taxDetails.postTaxInterest ?? result.grossInterest ?? 0,
+                principal: principal ?? 0,
+                fdRate: fdRate ?? 0,
+                tenure: tenure ?? 0,
+                grossInterest: result.grossInterest ?? 0,
+                maturityAmount: result.maturityAmount ?? 0,
+                realMaturityValue: fallbackInsightData.realMaturityValue ?? 0,
+                realReturn: result.realReturn ?? 0,
+                realGain: fallbackInsightData.realGain ?? 0,
+                inflationErosion: fallbackInsightData.inflationErosion ?? 0,
+                tdsDeducted: taxDetails.tdsDeducted ?? 0,
+                taxPayable: taxDetails.taxPayable ?? 0,
+                postTaxInterest: taxDetails.postTaxInterest ?? result.grossInterest ?? 0,
+                postTaxMaturityAmount: taxDetails.postTaxMaturityAmount ?? result.maturityAmount ?? 0,
+                postTaxRealReturn: taxDetails.postTaxRealReturn ?? result.realReturn ?? 0,
+                effectiveTaxRate: taxSlab ?? 0,
+                citizenType: citizenType ?? 'Regular',
+                isTaxExpanded: isTaxExpanded ?? false,
+                sipCorpus: fallbackInsightData.sipCorpus ?? 0,
+                opportunityCost: fallbackInsightData.opportunityCost ?? 0,
+              }} 
+              onBeforeSave={(outputs) => console.log('Saving Basic FD scenario:', outputs)}
+            />
+            <button 
+              onClick={() => setIsShareOpen(true)}
+              className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={handleExport}
-            className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
-            title="Export to Excel"
-          >
-            <Download className="w-5 h-5" />
-          </button>
-          <SaveScenarioButton 
-            type="basic_fd" 
-            defaultName={`FD — ₹${formatIndianRupees(principal)} at ${fdRate}%`}
-            inputs={{ principal, fdRate, tenure, citizenType, taxSlab }} 
-            outputs={{ 
-              mainResult: taxDetails.postTaxInterest ?? result.grossInterest ?? 0,
-              principal: principal ?? 0,
-              fdRate: fdRate ?? 0,
-              tenure: tenure ?? 0,
-              grossInterest: result.grossInterest ?? 0,
-              maturityAmount: result.maturityAmount ?? 0,
-              realMaturityValue: fallbackInsightData.realMaturityValue ?? 0,
-              realReturn: result.realReturn ?? 0,
-              realGain: fallbackInsightData.realGain ?? 0,
-              inflationErosion: fallbackInsightData.inflationErosion ?? 0,
-              tdsDeducted: taxDetails.tdsDeducted ?? 0,
-              taxPayable: taxDetails.taxPayable ?? 0,
-              postTaxInterest: taxDetails.postTaxInterest ?? result.grossInterest ?? 0,
-              postTaxMaturityAmount: taxDetails.postTaxMaturityAmount ?? result.maturityAmount ?? 0,
-              postTaxRealReturn: taxDetails.postTaxRealReturn ?? result.realReturn ?? 0,
-              effectiveTaxRate: taxSlab ?? 0,
-              citizenType: citizenType ?? 'Regular',
-              isTaxExpanded: isTaxExpanded ?? false,
-              sipCorpus: fallbackInsightData.sipCorpus ?? 0,
-              opportunityCost: fallbackInsightData.opportunityCost ?? 0,
-            }} 
-            onBeforeSave={(outputs) => console.log('Saving Basic FD scenario:', outputs)}
-          />
-          <button 
-            onClick={() => setIsShareOpen(true)}
-            className={cn("p-2 rounded-full transition-colors", theme === 'dark' ? "hover:bg-white/5 text-zinc-400 hover:text-white" : "hover:bg-black/5 text-zinc-500 hover:text-zinc-900")}
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {/* Controls */}
@@ -729,214 +763,216 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-[35fr_65fr] gap-8 my-12">
-        {/* Chart 1: Donut */}
-        <div className={cn(
-          "p-6 min-w-0 transition-all duration-300",
-          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
-        )}>
-          <h3 className={cn(
-            "text-sm font-semibold mb-6 uppercase tracking-widest",
-            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-          )}>YOUR MONEY SPLIT</h3>
-          <div className="h-[300px] w-full relative flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {donutData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip 
-                  cursor={false}
-                  contentStyle={{ 
-                    backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', 
-                    border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
-                    borderRadius: '8px', 
-                    color: theme === 'dark' ? '#f4f4f5' : '#09090b' 
-                  }}
-                  itemStyle={{ color: theme === 'dark' ? '#f4f4f5' : '#09090b' }}
-                  formatter={(value: number) => [formatIndianRupees(value), '']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <p className={cn(
-                "text-xl md:text-2xl font-bold text-center px-4",
-                theme === 'dark' ? "text-white" : "text-zinc-900"
-              )}>
-                {formatIndianRupees(isTaxExpanded && taxSlab > 0 ? taxDetails.postTaxMaturityAmount : result.maturityAmount)}
-              </p>
-              {isTaxExpanded && taxSlab > 0 && (
-                <p className={cn(
-                  "text-[10px] font-medium uppercase tracking-widest mt-0.5",
-                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-                )}>post-tax</p>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className={cn("w-3 h-3 rounded-full", theme === 'dark' ? "bg-zinc-600" : "bg-zinc-400")} />
-              <span className={cn(
-                "text-xs",
-                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-              )}>Principal</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className={cn(
-                "text-xs",
-                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-              )}>Interest</span>
-            </div>
-            {isTaxExpanded && taxSlab > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <span className={cn(
-                  "text-xs",
-                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-                )}>Tax</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div key={isTaxExpanded && taxSlab > 0 ? "tax-on" : "tax-off"} className={cn(
-          "p-6 min-w-0 transition-all duration-300",
-          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
-        )}>
-          <h3 className={cn(
-            "text-sm font-semibold mb-6 uppercase tracking-widest",
-            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-          )}>WHERE YOUR MONEY GOES</h3>
-          <div className="flex flex-col gap-0">
-            <div className="h-[300px] w-full relative">
+      {!isEmbedded && (
+        <div className="grid grid-cols-1 lg:grid-cols-[35fr_65fr] gap-8 my-12">
+          {/* Chart 1: Donut */}
+          <div className={cn(
+            "p-6 min-w-0 transition-all duration-300",
+            theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+          )}>
+            <h3 className={cn(
+              "text-sm font-semibold mb-6 uppercase tracking-widest",
+              theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+            )}>YOUR MONEY SPLIT</h3>
+            <div className="h-[300px] w-full relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={waterfallData} 
-                  margin={{ top: 30, right: 20, bottom: 100, left: 20 }}
-                  barSize={48}
-                  barCategoryGap="30%"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={false}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    tickFormatter={(val) => `₹${(val/100000).toFixed(2)}L`}
-                  />
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {donutData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
                   <RechartsTooltip 
                     cursor={false}
                     contentStyle={{ 
-                      backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                      backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', 
                       border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
                       borderRadius: '8px', 
-                      color: theme === 'dark' ? '#fff' : '#18181b' 
+                      color: theme === 'dark' ? '#f4f4f5' : '#09090b' 
                     }}
-                    itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
+                    itemStyle={{ color: theme === 'dark' ? '#f4f4f5' : '#09090b' }}
                     formatter={(value: number) => [formatIndianRupees(value), '']}
                   />
-                  <Bar 
-                    key={`bar-${isTaxExpanded}-${taxSlab}`}
-                    dataKey="value" 
-                    radius={[4, 4, 0, 0]}
-                    shape={<CustomBar />}
-                  >
-                    {waterfallData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                      <LabelList 
-                        dataKey="value" 
-                        position="top"
-                        offset={8}
-                        formatter={(val: number) => {
-                          if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-                          if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
-                          return formatIndianRupees(val);
-                        }}
-                        fill={theme === 'dark' ? "#a1a1aa" : "#71717a"}
-                        fontSize={10}
-                        fontWeight="bold"
-                      />
-                  </Bar>
-                </BarChart>
+                </PieChart>
               </ResponsiveContainer>
-
-              {/* Absolutely Positioned Labels Row */}
-              <div key={`labels-${isTaxExpanded}-${taxSlab}`} className="absolute bottom-[100px] md:bottom-[80px] left-0 w-full pointer-events-none h-0">
-                {barPositions
-                  .filter(pos => pos.index < waterfallData.length)
-                  .map((pos, idx) => {
-                    const isInflation = pos.label === barLabels.inflation;
-                    const isRealValue = pos.label === barLabels.realValue;
-                    const isPostTax = pos.label.includes('(Post-Tax)');
-
-                    return (
-                      <div 
-                        key={idx} 
-                        className="absolute flex flex-col items-center min-w-[100px]"
-                        style={{ 
-                          left: pos.x + pos.width / 2, 
-                          transform: 'translateX(-50%)',
-                          top: '12px'
-                        }}
-                      >
-                        <div className="md:rotate-0 -rotate-90 md:origin-center origin-center whitespace-nowrap md:whitespace-normal">
-                          <span className={cn(
-                            "text-[10px] text-center leading-tight",
-                            theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
-                          )}>
-                            {isInflation ? (
-                              <>
-                                <span className="hidden md:block">{pos.label.split(' ').slice(0, 2).join(' ')}</span>
-                                <span className="hidden md:block">{pos.label.split(' ').slice(2).join(' ')}</span>
-                                <span className="md:hidden">{pos.label}</span>
-                              </>
-                            ) : isRealValue ? (
-                              <>
-                                <span className="hidden md:block">{barLabels.realValue.split(' ').slice(0, 2).join(' ')}</span>
-                                <span className="hidden md:block">{barLabels.realValue.split(' ').slice(2, 4).join(' ')}</span>
-                                {isPostTax && <span className="hidden md:block">(Post-Tax)</span>}
-                                <span className="md:hidden">{pos.label}</span>
-                              </>
-                            ) : (
-                              pos.label
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className={cn(
+                  "text-xl md:text-2xl font-bold text-center px-4",
+                  theme === 'dark' ? "text-white" : "text-zinc-900"
+                )}>
+                  {formatIndianRupees(isTaxExpanded && taxSlab > 0 ? taxDetails.postTaxMaturityAmount : result.maturityAmount)}
+                </p>
+                {isTaxExpanded && taxSlab > 0 && (
+                  <p className={cn(
+                    "text-[10px] font-medium uppercase tracking-widest mt-0.5",
+                    theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                  )}>post-tax</p>
+                )}
               </div>
             </div>
-            {isTaxExpanded && taxSlab > 0 && (
-              <p className={cn(
-                "text-[11px] mt-3 italic",
-                theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-              )}>
-                Real value shown after income tax at {taxSlab}% and adjusted for {INFLATION_RATE}% inflation.
-              </p>
-            )}
+            <div className="flex justify-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-3 h-3 rounded-full", theme === 'dark' ? "bg-zinc-600" : "bg-zinc-400")} />
+                <span className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                )}>Principal</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                )}>Interest</span>
+              </div>
+              {isTaxExpanded && taxSlab > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className={cn(
+                    "text-xs",
+                    theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                  )}>Tax</span>
+                </div>
+              )}
+            </div>
+          </div>
+  
+          <div key={isTaxExpanded && taxSlab > 0 ? "tax-on" : "tax-off"} className={cn(
+            "p-6 min-w-0 transition-all duration-300",
+            theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+          )}>
+            <h3 className={cn(
+              "text-sm font-semibold mb-6 uppercase tracking-widest",
+              theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+            )}>WHERE YOUR MONEY GOES</h3>
+            <div className="flex flex-col gap-0">
+              <div className="h-[300px] w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={waterfallData} 
+                    margin={{ top: 30, right: 20, bottom: 100, left: 20 }}
+                    barSize={48}
+                    barCategoryGap="30%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={false}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      stroke={theme === 'dark' ? "#52525b" : "#71717a"} 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tickFormatter={(val) => `₹${(val/100000).toFixed(2)}L`}
+                    />
+                    <RechartsTooltip 
+                      cursor={false}
+                      contentStyle={{ 
+                        backgroundColor: theme === 'dark' ? '#18181b' : '#fff', 
+                        border: theme === 'dark' ? '1px solid #3f3f46' : '1px solid #e4e4e7', 
+                        borderRadius: '8px', 
+                        color: theme === 'dark' ? '#fff' : '#18181b' 
+                      }}
+                      itemStyle={{ color: theme === 'dark' ? '#fff' : '#18181b' }}
+                      formatter={(value: number) => [formatIndianRupees(value), '']}
+                    />
+                    <Bar 
+                      key={`bar-${isTaxExpanded}-${taxSlab}`}
+                      dataKey="value" 
+                      radius={[4, 4, 0, 0]}
+                      shape={<CustomBar />}
+                    >
+                      {waterfallData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                        <LabelList 
+                          dataKey="value" 
+                          position="top"
+                          offset={8}
+                          formatter={(val: number) => {
+                            if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+                            if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+                            return formatIndianRupees(val);
+                          }}
+                          fill={theme === 'dark' ? "#a1a1aa" : "#71717a"}
+                          fontSize={10}
+                          fontWeight="bold"
+                        />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+  
+                {/* Absolutely Positioned Labels Row */}
+                <div key={`labels-${isTaxExpanded}-${taxSlab}`} className="absolute bottom-[100px] md:bottom-[80px] left-0 w-full pointer-events-none h-0">
+                  {barPositions
+                    .filter(pos => pos.index < waterfallData.length)
+                    .map((pos, idx) => {
+                      const isInflation = pos.label === barLabels.inflation;
+                      const isRealValue = pos.label === barLabels.realValue;
+                      const isPostTax = pos.label.includes('(Post-Tax)');
+  
+                      return (
+                        <div 
+                          key={idx} 
+                          className="absolute flex flex-col items-center min-w-[100px]"
+                          style={{ 
+                            left: pos.x + pos.width / 2, 
+                            transform: 'translateX(-50%)',
+                            top: '12px'
+                          }}
+                        >
+                          <div className="md:rotate-0 -rotate-90 md:origin-center origin-center whitespace-nowrap md:whitespace-normal">
+                            <span className={cn(
+                              "text-[10px] text-center leading-tight",
+                              theme === 'dark' ? "text-zinc-500" : "text-zinc-400"
+                            )}>
+                              {isInflation ? (
+                                <>
+                                  <span className="hidden md:block">{pos.label.split(' ').slice(0, 2).join(' ')}</span>
+                                  <span className="hidden md:block">{pos.label.split(' ').slice(2).join(' ')}</span>
+                                  <span className="md:hidden">{pos.label}</span>
+                                </>
+                              ) : isRealValue ? (
+                                <>
+                                  <span className="hidden md:block">{barLabels.realValue.split(' ').slice(0, 2).join(' ')}</span>
+                                  <span className="hidden md:block">{barLabels.realValue.split(' ').slice(2, 4).join(' ')}</span>
+                                  {isPostTax && <span className="hidden md:block">(Post-Tax)</span>}
+                                  <span className="md:hidden">{pos.label}</span>
+                                </>
+                              ) : (
+                                pos.label
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+              {isTaxExpanded && taxSlab > 0 && (
+                <p className={cn(
+                  "text-[11px] mt-3 italic",
+                  theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+                )}>
+                  Real value shown after income tax at {taxSlab}% and adjusted for {INFLATION_RATE}% inflation.
+                </p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <WhatiffInsights 
         calculatorType="fd" 
@@ -962,99 +998,103 @@ export default function BasicFDCalculator({ onBack, onNavigate, onAskAI }: Basic
       />
 
       {/* Nudge Card */}
-      <div className={cn(
-        "p-6 border-l-4 border-emerald-500 flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300",
-        theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
-      )}>
-        <div className="space-y-2">
-          <p className={cn(
-            "font-medium",
-            theme === 'dark' ? "text-white" : "text-zinc-900"
-          )}>
-            💡 What if you staggered this FD?
-          </p>
-          <p className={cn(
-            "text-sm max-w-xl",
-            theme === 'dark' ? "text-zinc-400" : "text-zinc-600"
-          )}>
-            Splitting {formatCurrency(principal)} into multiple FDs maturing every few months gives you liquidity without sacrificing returns.
-          </p>
+      {!isEmbedded && (
+        <div className={cn(
+          "p-6 border-l-4 border-emerald-500 flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300",
+          theme === 'dark' ? "glass-card" : "bg-white border border-zinc-200 shadow-sm rounded-2xl"
+        )}>
+          <div className="space-y-2">
+            <p className={cn(
+              "font-medium",
+              theme === 'dark' ? "text-white" : "text-zinc-900"
+            )}>
+              💡 What if you staggered this FD?
+            </p>
+            <p className={cn(
+              "text-sm max-w-xl",
+              theme === 'dark' ? "text-zinc-400" : "text-zinc-600"
+            )}>
+              Splitting {formatCurrency(principal)} into multiple FDs maturing every few months gives you liquidity without sacrificing returns.
+            </p>
+          </div>
+          <button 
+            onClick={() => onNavigate('staggered_fd', { principal })}
+            className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-sm transition-colors whitespace-nowrap"
+          >
+            See Staggered FD <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-        <button 
-          onClick={() => onNavigate('staggered_fd', { principal })}
-          className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-sm transition-colors whitespace-nowrap"
-        >
-          See Staggered FD <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+      )}
 
       {/* Top Banks Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className={cn(
-            "text-sm font-bold uppercase tracking-widest",
-            theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
-          )}>Top Banks</h3>
-        </div>
-        <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-          {TOP_BANKS.map((bank) => (
-            <div 
-              key={bank.name} 
-              className={cn(
-                "flex-shrink-0 w-[160px] p-4 space-y-4 border rounded-[12px] transition-all group relative",
-                theme === 'dark' 
-                  ? "bg-zinc-800 border-zinc-700 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
-                  : "bg-white border-zinc-200 hover:shadow-md"
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-lg bg-white p-1.5 flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={`https://www.google.com/s2/favicons?domain=${bank.domain}&sz=64`} 
-                    alt={bank.name} 
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = `<div class="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold text-xl">${bank.name[0]}</div>`;
-                    }}
-                  />
-                </div>
-                <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                  <Star className="w-2.5 h-2.5 fill-current" />
-                  {bank.rating}
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <h4 className="font-bold text-white text-sm truncate">{bank.name}</h4>
-                <p className="text-xs text-zinc-400">Up to <span className="text-white font-bold">{bank.rate}%</span></p>
-              </div>
-              
-              <div className="flex flex-wrap gap-1">
-                {bank.tags.map(tag => (
-                  <span key={tag} className="text-[9px] font-bold text-zinc-400 bg-zinc-700 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              
-              <button 
-                onClick={() => {
-                  setFdRate(bank.rate);
-                  sliderRef.current?.scrollIntoView({ behavior: 'smooth' });
-                  window.open(bank.url, '_blank');
-                }}
-                className="w-full py-2 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/5 transition-all"
+      {!isEmbedded && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className={cn(
+              "text-sm font-bold uppercase tracking-widest",
+              theme === 'dark' ? "text-zinc-400" : "text-zinc-500"
+            )}>Top Banks</h3>
+          </div>
+          <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
+            {TOP_BANKS.map((bank) => (
+              <div 
+                key={bank.name} 
+                className={cn(
+                  "flex-shrink-0 w-[160px] p-4 space-y-4 border rounded-[12px] transition-all group relative",
+                  theme === 'dark' 
+                    ? "bg-zinc-800 border-zinc-700 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
+                    : "bg-white border-zinc-200 hover:shadow-md"
+                )}
               >
-                Use this rate <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-lg bg-white p-1.5 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={`https://www.google.com/s2/favicons?domain=${bank.domain}&sz=64`} 
+                      alt={bank.name} 
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = `<div class="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold text-xl">${bank.name[0]}</div>`;
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
+                    <Star className="w-2.5 h-2.5 fill-current" />
+                    {bank.rating}
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm truncate">{bank.name}</h4>
+                  <p className="text-xs text-zinc-400">Up to <span className="text-white font-bold">{bank.rate}%</span></p>
+                </div>
+                
+                <div className="flex flex-wrap gap-1">
+                  {bank.tags.map(tag => (
+                    <span key={tag} className="text-[9px] font-bold text-zinc-400 bg-zinc-700 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    setFdRate(bank.rate);
+                    sliderRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    window.open(bank.url, '_blank');
+                  }}
+                  className="w-full py-2 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/5 transition-all"
+                >
+                  Use this rate <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-500">
+            Rates are indicative for general public, tenure 1–3 years. Verify current rates on the bank's official website.
+          </p>
         </div>
-        <p className="text-[10px] text-zinc-500">
-          Rates are indicative for general public, tenure 1–3 years. Verify current rates on the bank's official website.
-        </p>
-      </div>
+      )}
 
       <ShareVision 
         isOpen={isShareOpen}

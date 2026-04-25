@@ -235,7 +235,7 @@ export default function App() {
                   <Route path="/fd-calculator" element={<BasicFDCalculator onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/buy-vs-rent" element={<BuyVsRentCalculator onBack={() => navigate('/dashboard')} initialData={location.state} onAskAI={openChat} />} />
                   <Route path="/child-future-planner" element={<ChildFuturePlanner onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
-                  <Route path="/financial-awareness-score" element={<FinancialAwarenessScore onBack={() => navigate('/dashboard')} onAskAI={openChat} />} />
+                  <Route path="/financial-awareness-score" element={<FinancialAwarenessScore onBack={() => navigate('/dashboard')} onNavigate={handleNavigate} onAskAI={openChat} />} />
                   <Route path="/comparison" element={<ComparisonView ids={selectedScenarioIds} onBack={() => navigate('/dashboard')} />} />
                   <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
                   <Route path="/terms" element={<TermsOfUse onBack={() => navigate(-1)} />} />

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
-import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Quote, ShieldCheck, Calculator, Sparkles } from 'lucide-react';
 import Footer from './Footer';
 import BackgroundAnimation from './BackgroundAnimation';
 
 const SIPCalculator = lazy(() => import('./calculators/SIPCalculator'));
+const BasicFDCalculator = lazy(() => import('./calculators/BasicFDCalculator'));
 
 interface LandingPageProps {
   onStart: () => void;
@@ -24,6 +25,52 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
   }, []);
 
   const [sipValues, setSipValues] = useState({ monthlyInvestment: 5000, annualRate: 12, years: 10, stepUp: 0 });
+  const [fdValues, setFdValues] = useState({ principal: 100000, fdRate: 6.5, tenure: 12, taxSlab: 20 });
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const carouselTimer = React.useRef<NodeJS.Timeout | null>(null);
+
+  const slides = [
+    { id: 'sip', label: 'SIP', icon: <Calculator size={12} />, color: '#10b981' },
+    { id: 'fd', label: 'Basic FD', icon: <Calculator size={12} />, color: '#10b981' },
+    { id: 'score', label: 'Financial Awareness', icon: <Sparkles size={12} />, color: '#f59e0b' }
+  ];
+
+  const startTimer = React.useCallback(() => {
+    if (carouselTimer.current) clearInterval(carouselTimer.current);
+    carouselTimer.current = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % slides.length);
+    }, 8000);
+  }, [slides.length]);
+
+  React.useEffect(() => {
+    if (!isHovered) {
+      startTimer();
+    } else {
+      if (carouselTimer.current) clearInterval(carouselTimer.current);
+    }
+    return () => {
+      if (carouselTimer.current) clearInterval(carouselTimer.current);
+    };
+  }, [isHovered, startTimer]);
+
+  const handleNext = () => {
+    setActiveSlide(prev => (prev + 1) % slides.length);
+    if (!isHovered) startTimer();
+  };
+
+  const handlePrev = () => {
+    setActiveSlide(prev => (prev - 1 + slides.length) % slides.length);
+    if (!isHovered) startTimer();
+  };
+
+  const handleDragEnd = (event: any, info: any) => {
+    if (info.offset.x < -50) {
+      handleNext();
+    } else if (info.offset.x > 50) {
+      handlePrev();
+    }
+  };
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentFeature, setCurrentFeature] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(1);
@@ -161,6 +208,17 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       source: 'landing'
     }));
     onNavigate('sip');
+  };
+  
+  const handleFdFullBreakdown = () => {
+    localStorage.setItem('fdPreFill', JSON.stringify({
+      principal: fdValues.principal,
+      fdRate: fdValues.fdRate,
+      tenure: fdValues.tenure,
+      taxSlab: fdValues.taxSlab,
+      source: 'landing'
+    }));
+    onNavigate('basic_fd');
   };
 
   const fadeUp = {
@@ -339,48 +397,329 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
           <p style={{ color: '#a1a1aa', fontSize: '14px' }}>No login. No sign up. See exactly what WhatIff does — live.</p>
         </div>
 
-        <div style={{ 
-          maxWidth: '680px', 
-          width: '100%',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '20px',
-          padding: '32px 28px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-          minHeight: '400px', // Add min-height to prevent layout shift
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center'
-        }}>
-          <React.Suspense fallback={
-            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '32px', height: '32px', border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            </div>
-          }>
-            <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
-          </React.Suspense>
-          
-          <button 
-            onClick={handleFullBreakdown}
-            style={{
-              width: '100%',
-              background: '#10b981',
-              color: '#000',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '14px',
-              fontWeight: 800,
-              fontSize: '14px',
-              marginTop: '24px',
-              cursor: 'pointer',
-              boxShadow: '0 0 20px rgba(16,185,129,0.4)',
-              transition: 'transform 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            See Full Breakdown →
-          </button>
+        <div 
+          className="carousel-container"
+          style={{ 
+            maxWidth: '680px', 
+            width: '100%',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {/* Desktop Navigation Arrows */}
+          <div className="hidden md:block">
+            <button 
+              onClick={handlePrev}
+              style={{
+                position: 'absolute',
+                left: '-60px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#71717a',
+                transition: 'all 0.2s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              onClick={handleNext}
+              style={{
+                position: 'absolute',
+                right: '-60px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#71717a',
+                transition: 'all 0.2s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* Slide Label Pill */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 12px',
+            background: `${slides[activeSlide].color}15`,
+            border: `1px solid ${slides[activeSlide].color}30`,
+            borderRadius: '99px',
+            color: slides[activeSlide].color,
+            fontSize: '11px',
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            marginBottom: '12px'
+          }}>
+            {slides[activeSlide].icon}
+            {slides[activeSlide].label}
+          </div>
+
+          {/* Slide Content Box */}
+          <div style={{ 
+            width: '100%',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '20px',
+            padding: '32px 28px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            minHeight: '480px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeSlide}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                onDragEnd={handleDragEnd}
+                style={{ height: '100%' }}
+              >
+                {activeSlide === 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <React.Suspense fallback={
+                      <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '32px', height: '32px', border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                      </div>
+                    }>
+                      <SIPCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setSipValues} />
+                    </React.Suspense>
+                    <button 
+                      onClick={handleFullBreakdown}
+                      style={{
+                        width: '100%',
+                        background: '#10b981',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '14px',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        marginTop: '24px',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 20px rgba(16,185,129,0.4)',
+                        transition: 'transform 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      See Full Breakdown →
+                    </button>
+                  </div>
+                )}
+
+                {activeSlide === 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <React.Suspense fallback={
+                      <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '32px', height: '32px', border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                      </div>
+                    }>
+                      <BasicFDCalculator isEmbedded={true} onBack={() => {}} onNavigate={onNavigate} onValuesChange={setFdValues} />
+                    </React.Suspense>
+                    <button 
+                      onClick={handleFdFullBreakdown}
+                      style={{
+                        width: '100%',
+                        background: '#10b981',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '14px',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        marginTop: '24px',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 20px rgba(16,185,129,0.4)',
+                        transition: 'transform 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      See Full Breakdown →
+                    </button>
+                  </div>
+                )}
+
+                {activeSlide === 2 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    height: '100%',
+                    justifyContent: 'center',
+                    padding: '12px 0'
+                  }}>
+                    <div style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '24px',
+                      padding: '32px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center'
+                    }}>
+                      {/* Animated Score Arc */}
+                      <div style={{ position: 'relative', width: '220px', height: '140px', marginBottom: '24px' }}>
+                        <svg viewBox="0 0 100 60" style={{ width: '100%', height: '100%' }}>
+                          {/* Inner soft track */}
+                          <path
+                            d="M 10 50 A 40 40 0 0 1 90 50"
+                            fill="none"
+                            stroke="rgba(255,255,255,0.05)"
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                          />
+                          {/* Main track border */}
+                          <path
+                            d="M 10 50 A 40 40 0 0 1 90 50"
+                            fill="none"
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                          {/* Score Arc */}
+                          <motion.path
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 0.72 }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            d="M 10 50 A 40 40 0 0 1 90 50"
+                            fill="none"
+                            stroke="url(#arc-gradient)"
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                            strokeDasharray="125 125"
+                          />
+                          <defs>
+                            <linearGradient id="arc-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#10b981" />
+                              <stop offset="100%" stopColor="#34d399" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div style={{
+                          position: 'absolute',
+                          top: '48%',
+                          left: '50%',
+                          transform: 'translate(-50%, 0%)',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '42px', fontWeight: 900, color: '#fff', lineHeight: 1 }}>72</div>
+                          <div style={{ fontSize: '10px', fontWeight: 800, color: '#f59e0b', letterSpacing: '0.1em', marginTop: '4px' }}>GOOD</div>
+                        </div>
+                      </div>
+
+                      <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#fff', marginBottom: '8px' }}>Financial Awareness Score</h3>
+                      <p style={{ fontSize: '14px', color: '#a1a1aa', maxWidth: '380px', marginBottom: '24px' }}>
+                        How well do you really understand your money? Get your personalized score in 3 minutes.
+                      </p>
+
+                      {/* Parameters Row 1 */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '16px' }}>
+                        {['Inflation Adjustments', 'Tax Efficiency', 'Real Returns', 'Power of compounding', 'Debt to Income'].map(pill => (
+                          <span key={pill} style={{
+                            padding: '6px 12px',
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '99px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: '#e4e4e7'
+                          }}>
+                            {pill}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Privacy Pills */}
+                      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
+                        {[
+                          { icon: <ShieldCheck size={12} />, text: 'No sign up' },
+                          { icon: <ShieldCheck size={12} />, text: '100% Anonymous' },
+                          { icon: <ShieldCheck size={12} />, text: 'Encrypted result' }
+                        ].map((pill, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#71717a' }}>
+                            <span style={{ color: '#10b981' }}>{pill.icon}</span>
+                            {pill.text}
+                          </div>
+                        ))}
+                      </div>
+
+                      <button 
+                        onClick={() => onNavigate('financial_awareness_score')}
+                        style={{
+                          width: '100%',
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          fontWeight: 800,
+                          fontSize: '15px',
+                          cursor: 'pointer',
+                          boxShadow: '0 8px 16px rgba(245,158,11,0.2)'
+                        }}
+                      >
+                        Check Your Score →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Dot Indicators */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveSlide(idx)}
+                style={{
+                  width: idx === activeSlide ? '20px' : '6px',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: idx === activeSlide ? '#10b981' : '#3f3f46',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: '0.3s ease-in-out'
+                }}
+              />
+            ))}
+          </div>
         </div>
       </section>
 

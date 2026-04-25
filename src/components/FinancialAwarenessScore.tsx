@@ -314,25 +314,26 @@ const QUESTIONS: Question[] = [
 
 const PARAMETERS = Array.from(new Set(QUESTIONS.map(q => q.parameter)));
 
-const calculatorLinks: Record<string, { name: string | null; path: string | null; note?: string; comingSoon?: boolean }> = {
-  "Savings Habits": { name: 'SIP Calculator', path: '/sip-calculator' },
-  "Emergency Preparedness": { name: 'FD Planner', path: '/fd-calculator' },
-  "Retirement Readiness": { name: 'Retirement Calculator', path: '/retirement-calculator' },
-  "Life Insurance Awareness": { name: null, path: null, note: 'Compare term plans on PolicyBazaar or IRDAI Bima Sugam' },
-  "Health Insurance": { name: null, path: null, note: 'Compare on IRDAI Bima Sugam' },
-  "Debt Management": { name: 'EMI Calculator', path: '/emi-calculator' },
-  "Investment Diversification": { name: 'Goal Planner', path: '/goal-planner' },
-  "Tax Efficiency": { name: 'Tax Regime Calculator', path: null, comingSoon: true },
-  "Estate and Legacy": { name: null, path: null, note: 'Update nominees via DigiLocker' },
-  "Financial Goals Clarity": { name: 'Goal Planner', path: '/goal-planner' }
+const calculatorLinks: Record<string, { name: string | null; screen: string | null; note?: string; comingSoon?: boolean }> = {
+  "Savings Habits": { name: 'SIP Calculator', screen: 'sip' },
+  "Emergency Preparedness": { name: 'FD Planner', screen: 'basic_fd' },
+  "Retirement Readiness": { name: 'Retirement Calculator', screen: 'retirement' },
+  "Life Insurance Awareness": { name: null, screen: null, note: 'Compare term plans on PolicyBazaar or IRDAI Bima Sugam' },
+  "Health Insurance": { name: null, screen: null, note: 'Compare on IRDAI Bima Sugam' },
+  "Debt Management": { name: 'EMI Calculator', screen: 'emi' },
+  "Investment Diversification": { name: 'Goal Planner', screen: 'goal' },
+  "Tax Efficiency": { name: 'Tax Regime Calculator', screen: null, comingSoon: true },
+  "Estate and Legacy": { name: null, screen: null, note: 'Update nominees via DigiLocker' },
+  "Financial Goals Clarity": { name: 'Goal Planner', screen: 'goal' }
 };
 
 interface FinancialAwarenessScoreProps {
   onBack?: () => void;
+  onNavigate?: (screen: any) => void;
   onAskAI?: (context: any, chips: string[], systemPrompt: string) => void;
 }
 
-export default function FinancialAwarenessScore({ onBack, onAskAI }: FinancialAwarenessScoreProps) {
+export default function FinancialAwarenessScore({ onBack, onNavigate, onAskAI }: FinancialAwarenessScoreProps) {
   const [screen, setScreen] = useState<'landing' | 'quiz' | 'calculating' | 'results'>('landing');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>(new Array(QUESTIONS.length).fill(-1));
@@ -1062,6 +1063,27 @@ Disclaimer: This session is for educational purposes only. No financial advice p
                         })()}
                       </span>
                     </div>
+
+                    {/* Action Link for Poor/Review categories */}
+                    {(activeCategory === 'WORK' || activeCategory === 'REVIEW') && calculatorLinks[q.parameter] && (
+                      <div className="pt-2">
+                        {calculatorLinks[q.parameter].screen ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigate?.(calculatorLinks[q.parameter].screen);
+                            }}
+                            className="flex items-center gap-1.5 text-[11px] font-bold text-amber-500 hover:text-amber-400 transition-colors bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20"
+                          >
+                            Use {calculatorLinks[q.parameter].name} <ArrowRight className="w-3 h-3" />
+                          </button>
+                        ) : calculatorLinks[q.parameter].note && (
+                          <span className="text-[10px] text-emerald-500/80 font-medium italic">
+                            💡 {calculatorLinks[q.parameter].note}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
             </motion.div>
