@@ -40,7 +40,7 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
     if (carouselTimer.current) clearInterval(carouselTimer.current);
     carouselTimer.current = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % slides.length);
-    }, 8000);
+    }, 5000);
   }, [slides.length]);
 
   React.useEffect(() => {
@@ -71,6 +71,108 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
       handlePrev();
     }
   };
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is WhatIff completely free to use?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Every personal finance calculator on WhatIff is completely free. There is no paywall, no premium plan, and no trial period. This will not change."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need to sign up or create an account to use WhatIff?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. WhatIff requires no account, no login, and no sign-up of any kind. Open the app and start calculating immediately — no registration required."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does WhatIff store or collect my financial data?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Every calculation on WhatIff happens entirely on your device. We never see your salary, your loan amount, your SIP amount, or any other number you enter. Your financial data never leaves your phone or browser."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does WhatIff give financial advice or investment recommendations?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. WhatIff is not a SEBI-registered investment advisor and does not give financial advice or investment recommendations. The calculators show you what your numbers mean in plain language. The decision is always yours."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How accurate are WhatIff's financial calculators?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "WhatIff uses standard financial formulas — the same ones used by banks and mutual fund platforms in India. If you find a calculation error, email hello.whatiff@gmail.com and we will investigate and fix it."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does the AI assistant in WhatIff do?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The AI assistant answers questions about your specific calculator results — why your EMI splits the way it does, what your SIP corpus means in real terms, or how the prepay vs invest break-even was calculated. It does not give financial advice or product recommendations."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does WhatIff make money if it is free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "WhatIff currently does not generate revenue. It is built because the tool did not exist and the people who need it most — first-time investors, home loan borrowers, young earners — should not have to pay for access to clear financial information."
+        }
+      }
+    ]
+  };
+
+  const faqItems = [
+    {
+      id: "faq-1",
+      q: "Is WhatIff completely free to use?",
+      a: "Yes. Every personal finance calculator on WhatIff is completely free. There is no paywall, no premium plan, and no trial period. This will not change."
+    },
+    {
+      id: "faq-2",
+      q: "Do I need to sign up or create an account to use WhatIff?",
+      a: "No. WhatIff requires no account, no login, and no sign-up of any kind. Open the app and start calculating immediately — no registration required."
+    },
+    {
+      id: "faq-3",
+      q: "Does WhatIff store or collect my financial data?",
+      a: "No. Every calculation on WhatIff happens entirely on your device. We never see your salary, your loan amount, your SIP amount, or any other number you enter. Your financial data never leaves your phone or browser."
+    },
+    {
+      id: "faq-4",
+      q: "Does WhatIff give financial advice or investment recommendations?",
+      a: "No. WhatIff is not a SEBI-registered investment advisor and does not give financial advice or investment recommendations. The calculators show you what your numbers mean in plain language. The decision is always yours."
+    },
+    {
+      id: "faq-5",
+      q: "How accurate are WhatIff's financial calculators?",
+      a: <>WhatIff uses standard financial formulas — the same ones used by banks and mutual fund platforms in India. If you find a calculation error, email <a href="mailto:hello.whatiff@gmail.com" style={{ color: '#10b981', textDecoration: 'none' }}>hello.whatiff@gmail.com</a> and we will investigate and fix it.</>
+    },
+    {
+      id: "faq-6",
+      q: "What does the AI assistant in WhatIff do?",
+      a: "The AI assistant answers questions about your specific calculator results — why your EMI splits the way it does, what your SIP corpus means in real terms, or how the prepay vs invest break-even was calculated. It has full context of your current inputs and outputs. It does not give financial advice or product recommendations."
+    },
+    {
+      id: "faq-7",
+      q: "How does WhatIff make money if it is free?",
+      a: "WhatIff currently does not generate revenue. It is built because the tool did not exist and the people who need it most — first-time investors, home loan borrowers, young earners — should not have to pay for access to clear financial information."
+    }
+  ];
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentFeature, setCurrentFeature] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(1);
@@ -231,9 +333,15 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
     <div style={{ background: '#09090b', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
       <BackgroundAnimation />
       <Helmet>
-        <title>WhatIff — Free Financial Calculators for Indian Investors</title>
-        <meta name="description" content="Free privacy-first financial calculators for SIP, EMI, retirement planning, home purchase & more. Built for young Indian investors. No login required." />
-        <link rel="canonical" href="https://whatiff.in/" />
+        <title>WhatIff — Free Personal Finance Calculators for India</title>
+        <meta name="description" content="Free SIP, EMI, retirement, home loan, and child education calculators for India. No login. No ads. No financial advice. Your numbers explained in plain language." />
+        <meta property="og:title" content="WhatIff — Free Personal Finance Calculators for India" />
+        <meta property="og:description" content="Free SIP, EMI, retirement, home loan, and child education calculators. No login. No data collected. Built for young Indian investors." />
+        <meta property="og:url" content="https://whatiff.in" />
+        <link rel="canonical" href="https://whatiff.in" />
+        <script type="application/ld+json">
+          {JSON.stringify(faqSchema)}
+        </script>
       </Helmet>
       {/* Header */}
       <header style={{
@@ -1018,6 +1126,158 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Questions Section */}
+      <section 
+        aria-label="Frequently asked questions about WhatIff"
+        style={{ padding: '80px 24px', background: 'transparent' }}
+      >
+        <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+          <header style={{ 
+            marginBottom: '48px'
+          }}>
+            <div>
+              <h2 style={{ 
+                color: '#fff', 
+                fontSize: 'clamp(22px, 4vw, 28px)', 
+                fontWeight: 800, 
+                letterSpacing: '-0.02em',
+                marginBottom: '4px'
+              }}>
+                Questions
+              </h2>
+              <p style={{ color: '#71717a', fontSize: '14px' }}>
+                The ones people actually ask.
+              </p>
+            </div>
+          </header>
+
+          <dl style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: 0 }}>
+            {faqItems.map((item, index) => {
+              const isOpen = openFaqIndex === index;
+              return (
+                <div 
+                  key={index} 
+                  style={{ 
+                    background: 'rgba(255,255,255,0.02)',
+                    border: isOpen ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <dt>
+                    <button
+                      aria-expanded={isOpen}
+                      aria-controls={item.id}
+                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '16px 20px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <span style={{ 
+                        color: '#71717a', 
+                        fontSize: '11px', 
+                        fontWeight: 500, 
+                        minWidth: '20px'
+                      }}>
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <span style={{ 
+                        color: '#fff', 
+                        fontSize: '14px', 
+                        fontWeight: 500, 
+                        textAlign: 'left', 
+                        flex: 1,
+                        lineHeight: 1.4 
+                      }}>
+                        {item.q}
+                      </span>
+                      <div 
+                        aria-hidden="true"
+                        style={{ 
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: isOpen ? '#1D9E75' : '#09090b',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.3s ease',
+                          transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)'
+                        }}
+                      >
+                        <span style={{ 
+                          color: isOpen ? '#fff' : '#71717a', 
+                          fontSize: '14px', 
+                          fontWeight: 400,
+                          lineHeight: 1
+                        }}>
+                          +
+                        </span>
+                      </div>
+                    </button>
+                  </dt>
+                  <dd 
+                    id={item.id}
+                    hidden={!isOpen}
+                    style={{
+                      maxHeight: isOpen ? '200px' : '0',
+                      overflow: 'hidden',
+                      transition: 'max-height 0.3s ease',
+                      margin: 0
+                    }}
+                  >
+                    <div style={{ 
+                      color: '#a1a1aa', 
+                      fontSize: '13px', 
+                      lineHeight: 1.75, 
+                      padding: '0 20px 20px 56px'
+                    }}>
+                      {item.a}
+                    </div>
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+
+          <footer style={{
+            marginTop: '32px',
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ color: '#71717a', fontSize: '12px' }}>Still have a question?</span>
+            <a 
+              href="mailto:hello.whatiff@gmail.com" 
+              style={{ 
+                color: '#1D9E75', 
+                fontSize: '12px', 
+                fontWeight: 500, 
+                textDecoration: 'none' 
+              }}
+            >
+              hello.whatiff@gmail.com
+            </a>
+          </footer>
         </div>
       </section>
 
