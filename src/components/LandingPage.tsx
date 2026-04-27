@@ -337,6 +337,8 @@ export default function LandingPage({ onStart, onNavigate }: LandingPageProps) {
         <meta name="description" content="Free SIP, EMI, retirement, home loan, and child education calculators for India. No login. No ads. No financial advice. Your numbers explained in plain language." />
         <meta property="og:title" content="WhatIff — Free Personal Finance Calculators for India" />
         <meta property="og:description" content="Free SIP, EMI, retirement, home loan, and child education calculators. No login. No data collected. Built for young Indian investors." />
+        <meta property="og:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&auto=format&fit=crop" />
+        <meta name="twitter:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&auto=format&fit=crop" />
         <meta property="og:url" content="https://whatiff.in" />
         <link rel="canonical" href="https://whatiff.in" />
         <script type="application/ld+json">

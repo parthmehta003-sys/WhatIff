@@ -288,6 +288,8 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
 
   // Inputs
   const [childAge, setChildAge] = useState(0);
+  const [childAgeSelection, setChildAgeSelection] = useState('newborn');
+  const [childExactAge, setChildExactAge] = useState(7);
   const [schoolType, setSchoolType] = useState<keyof typeof SCHOOL_FEES>('cbsePrivate');
   const [higherEdType, setHigherEdType] = useState<keyof typeof HIGHER_ED_FEES>('privateIndian');
   const [cityTier, setCityTier] = useState<keyof typeof CITY_MULTIPLIER>('metro');
@@ -321,7 +323,7 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
   const isSchoolAge = childAge >= 4;
 
   const schoolModel = useMemo(() => {
-    const effectiveSipA = isSchoolAge ? 0 : sipA;
+    const effectiveSipA = childAge >= 4 ? 0 : sipA;
     const schoolFeesByYear: Record<number, number> = {};
     for (let age = Math.max(4, childAge); age <= 17; age++) {
       const yearsFromNow = age - childAge;
@@ -385,7 +387,7 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
       sipBurdenReduction: totalSchoolFees > 0 ? (totalFromCorpus / totalSchoolFees) * 100 : 0,
       avgMonthlyFromIncome: (17 - Math.max(4, childAge) + 1) > 0 ? (totalFromIncome / ((17 - Math.max(4, childAge) + 1) * 12)) : 0
     };
-  }, [childAge, schoolType, educationInflation, sipA, monthlyReturn, isSchoolAge]);
+  }, [childAge, schoolType, educationInflation, sipA, monthlyReturn]);
 
   const collegeModel = useMemo(() => {
     const startAge = HIGHER_ED_START_AGE[higherEdType];
@@ -402,7 +404,9 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
     const simulate = (sip: number) => {
       let corpus = 0;
       for (let age = childAge; age <= endAge; age++) {
-        for (let m = 0; m < 12; m++) corpus = (corpus + sip) * (1 + monthlyReturn);
+        for (let m = 0; m < 12; m++) {
+          corpus = corpus * (1 + monthlyReturn) + sip;
+        }
         corpus -= collegeFeesByYear[age] || 0;
       }
       return corpus;
@@ -415,20 +419,20 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
     }
     sipB = Math.ceil(sipB / 500) * 500;
 
-    let corpusAt18 = 0;
+    let corpusAtX = 0;
     for (let age = childAge; age < startAge; age++) {
-      for (let m = 0; m < 12; m++) corpusAt18 = (corpusAt18 + sipB) * (1 + monthlyReturn);
+      for (let m = 0; m < 12; m++) corpusAtX = corpusAtX * (1 + monthlyReturn) + sipB;
     }
 
     const collegeYearTable = [];
-    let corpus = corpusAt18;
+    let corpus = corpusAtX;
     let totalHarvestingGrowth = 0;
     for (let age = startAge; age <= endAge; age++) {
       const opening = corpus;
       let yearlySIP = 0;
       let yearlyGrowth = 0;
       for (let m = 0; m < 12; m++) {
-        const growth = (corpus + sipB) * monthlyReturn;
+        const growth = corpus * monthlyReturn;
         corpus = (corpus + sipB + growth);
         yearlyGrowth += growth;
         yearlySIP += sipB;
@@ -442,25 +446,29 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
     return { 
       sipB, 
       totalCollegeFees, 
-      corpusAt18, 
+      corpusAtX, 
       collegeYearTable, 
       totalHarvestingGrowth,
       startAge,
       endAge,
       durationMonths: duration * 12
     };
-  }, [childAge, higherEdType, educationInflation, monthlyReturn, sipReturn]);
+  }, [childAge, higherEdType, educationInflation, monthlyReturn]);
 
   const weddingModel = useMemo(() => {
     if (!planWedding) return { sipC: 0, costFuture: 0, totalInvested: 0, growthEarned: 0, years: 0, months: 0 };
     const years = weddingAge - childAge;
     const costFuture = weddingCostToday * Math.pow(1 + generalInflation / 100, years);
     const months = years * 12;
-    const sipC_raw = months > 0 ? (costFuture / (((Math.pow(1 + monthlyReturn, months) - 1) / monthlyReturn) * (1 + monthlyReturn))) : 0;
+    // SIP paid at end of month: corpus = sip * ((1+r)^n - 1) / r
+    // User wants start of month? "SIP C: ₹8,025/month"
+    // Let's use the formula provided in the prompt logic
+    const n = months;
+    const sipC_raw = n > 0 ? (costFuture / (((Math.pow(1 + monthlyReturn, n) - 1) / monthlyReturn) * (1 + monthlyReturn))) : 0;
     const sipC = Math.ceil(sipC_raw / 500) * 500;
     const totalInvested = sipC * months;
     const growthEarned = costFuture - totalInvested;
-    return { sipC, costFuture, totalInvested, growthEarned, years, months };
+    return { sipC, costFuture, totalInvested, growthEarned, years: years, months };
   }, [childAge, planWedding, weddingAge, weddingCostToday, generalInflation, monthlyReturn]);
 
   const activeTotalsForCurrentChild = useMemo(() => {
@@ -641,12 +649,21 @@ ${JSON.stringify(context)}`;
     ];
   }, [step, hasSentFirstMessage]);
 
+  const agePill = childAge === 0 ? 'Newborn'
+    : childAge === 1 ? '1 year old'
+    : childAge === 2 ? '2 years old'
+    : childAge === 3 ? '3 years old'
+    : `${childAge} years old`;
+
   const insights = useMemo(() => [
     `School fees are primarily an income commitment, your SIP A offsets **${schoolModel.sipBurdenReduction.toFixed(0)}%** of the burden.`,
     `College and wedding are fully pre-funded via SIP B and C, ensuring zero impact on your future monthly cashflow.`,
     `Your peak investment period is Age **${childAge} to 4**, where the combined monthly SIP is **${formatINR(schoolModel.effectiveSipA + collegeModel.sipB + weddingModel.sipC)}**.`,
   ], [schoolModel, collegeModel, weddingModel, childAge]);
 
+  const sipAPill = schoolModel.effectiveSipA > 0
+    ? `SIP A ₹${formatINR(schoolModel.effectiveSipA)}/mo`
+    : `No SIP A — age ${childAge}`;
 
   const resultsView = (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -681,7 +698,7 @@ ${JSON.stringify(context)}`;
                 <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-amber-500" />
                   <p className="text-[10px] text-zinc-500 font-bold whitespace-nowrap">
-                    Planned for {childAge === 0 ? "Newborn" : `${childAge} Year Old`} Child
+                    Planned for {agePill} Child
                   </p>
                 </div>
               </div>
@@ -703,7 +720,7 @@ ${JSON.stringify(context)}`;
               {/* SIP A - 0 to 4 */}
               {childAge < 4 && (
                 <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                                         <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     <span>SIP A (School)</span>
                     <span>Age {childAge} - 4</span>
                   </div>
@@ -838,13 +855,15 @@ ${JSON.stringify(context)}`;
               <h2 className="text-amber-500 text-[10px] font-bold uppercase tracking-widest">Combined Monthly Outflow</h2>
               
               <div className="space-y-4">
-                <div className="flex justify-between items-baseline py-2 border-b border-white/[0.06]">
-                  <span className="text-zinc-400 text-sm">Phase 1: Age {childAge}-4</span>
-                  <span className="text-white text-lg font-bold">{formatINRFull(schoolModel.effectiveSipA + collegeModel.sipB + weddingModel.sipC)}/mo</span>
-                </div>
+                {childAge < 4 && (
+                  <div className="flex justify-between items-baseline py-2 border-b border-white/[0.06]">
+                    <span className="text-zinc-400 text-sm">Phase 1: Age {childAge}-4</span>
+                    <span className="text-white text-lg font-bold">{formatINRFull(schoolModel.effectiveSipA + collegeModel.sipB + weddingModel.sipC)}/mo</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-baseline py-2 border-b border-white/[0.06] relative">
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 text-sm">Phase 2: Age 4-18 (Incl. School Fees)</span>
+                    <span className="text-zinc-400 text-sm">Phase 2: Age {Math.max(4, childAge)}-{collegeModel.startAge} (Incl. School Fees)</span>
                     <button 
                       onClick={() => setShowFeeCoverageInfo(!showFeeCoverageInfo)}
                       className="p-1 hover:bg-white/5 rounded-full text-zinc-600 hover:text-amber-500 transition-colors"
@@ -905,7 +924,7 @@ ${JSON.stringify(context)}`;
                 </div>
                 <div>
                   <p className="text-white text-xl font-black">{formatCrores(schoolModel.totalSchoolFees)}</p>
-                  <p className="text-zinc-500 text-[10px] mt-1 leading-relaxed">Proj. total for Age 4-17</p>
+                  <p className="text-zinc-500 text-[10px] mt-1 leading-relaxed">Proj. total for Age {Math.max(4, childAge)}-17</p>
                 </div>
               </div>
               <div className="bg-white/[0.03] rounded-[12px] p-5 border border-white/[0.05] space-y-3">
@@ -1250,18 +1269,71 @@ ${JSON.stringify(context)}`;
                     </div>
 
                     <div className="space-y-10">
-                      <PillGroup 
-                        label="Child's current age"
-                        value={childAge}
-                        onChange={setChildAge}
-                        options={[
-                          { label: "Age: 0", value: 0 },
-                          { label: "1 Year", value: 1 },
-                          { label: "2 Years", value: 2 },
-                          { label: "3 Years", value: 3 },
-                          { label: "4+ Years", value: 4 }
-                        ]}
-                      />
+                      <div className="space-y-4">
+                        <PillGroup 
+                          label="Child's current age"
+                          value={childAgeSelection}
+                          onChange={(val: string) => {
+                            setChildAgeSelection(val);
+                            if (val === 'newborn') setChildAge(0);
+                            else if (val === '1') setChildAge(1);
+                            else if (val === '2') setChildAge(2);
+                            else if (val === '3') setChildAge(3);
+                            else if (val === '4+') setChildAge(childExactAge);
+                          }}
+                          options={[
+                            { label: "Newborn", value: "newborn" },
+                            { label: "1 Year", value: "1" },
+                            { label: "2 Years", value: "2" },
+                            { label: "3 Years", value: "3" },
+                            { label: "4+ Years", value: "4+" }
+                          ]}
+                        />
+
+                        {childAgeSelection === '4+' && (
+                          <div style={{ marginTop: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#71717a' }}>
+                                Child's exact age
+                              </label>
+                              <input
+                                type="number"
+                                min={4} max={17}
+                                value={childExactAge}
+                                onChange={e => {
+                                  const val = Math.min(17, Math.max(4, parseInt(e.target.value) || 4))
+                                  setChildExactAge(val)
+                                  setChildAge(val)
+                                }}
+                                style={{
+                                  background: 'rgba(255,255,255,0.04)',
+                                  border: '1px solid rgba(255,255,255,0.08)',
+                                  borderRadius: 8, padding: '4px 8px',
+                                  color: 'white', fontSize: 14, fontWeight: 700,
+                                  width: 70, textAlign: 'center', outline: 'none'
+                                }}
+                                onFocus={e => e.target.style.border = '1px solid rgba(245,158,11,0.4)'}
+                                onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.08)'}
+                              />
+                            </div>
+                            <input
+                              type="range" min={4} max={17} step={1}
+                              value={childExactAge}
+                              onChange={e => {
+                                const val = parseInt(e.target.value)
+                                setChildExactAge(val)
+                                setChildAge(val)
+                              }}
+                              style={{ width: '100%', accentColor: '#f59e0b' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                              <span style={{ fontSize: 10, color: '#3f3f46' }}>4 years</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>{childExactAge} years old</span>
+                              <span style={{ fontSize: 10, color: '#3f3f46' }}>17 years</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <PillGroup 
@@ -1314,15 +1386,15 @@ ${JSON.stringify(context)}`;
                 {step === 2 && (
                   <div className="space-y-10">
                      <div className="flex flex-wrap gap-2 mb-4">
-                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">Age: {childAge}, {schoolType === 'cbsePrivate' ? 'CBSE Private' : 'Private'}</button>
+                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">Age: {agePill}, {schoolType === 'cbsePrivate' ? 'CBSE Private' : 'Private'}</button>
                      </div>
                     
                     <div className="space-y-1.5">
                       <h2 className="text-[24px] md:text-[32px] font-extrabold text-white tracking-tighter">School Fees</h2>
-                      <p className="text-zinc-100 text-lg font-medium">Plan for the 14-year schooling journey starting age 4 (including pre-school).</p>
+                      <p className="text-zinc-100 text-lg font-medium">{childAge >= 18 ? "School years complete — planning for college and wedding only." : `Plan for the remaining schooling journey (age ${Math.max(4, childAge)} to 17).`}</p>
                     </div>
 
-                    <div className="space-y-10">
+                    <div className={cn("space-y-10", childAge >= 18 && "opacity-30 pointer-events-none")}>
                       <div className="bg-white/5 p-8 rounded-2xl border border-white/10">
                         <PillGroup 
                             label="School Type"
@@ -1353,19 +1425,21 @@ ${JSON.stringify(context)}`;
                                   <div className="flex justify-between items-start py-2 border-b border-white/[0.04]">
                                      <div className="flex flex-col">
                                         <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Total School Fees</span>
-                                        <span className="text-[10px] text-zinc-500 italic mt-0.5">(from years 4 to 17)</span>
+                                        <span className="text-[10px] text-zinc-500 italic mt-0.5">(age {Math.max(4, childAge)} to 17)</span>
                                      </div>
                                      <span className="text-white text-[15px] font-bold">{formatINRFull(schoolModel.totalSchoolFees)}</span>
                                   </div>
                                   <div className="flex justify-between items-baseline py-2 border-b border-white/[0.04]">
-                                     <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Corpus at Age 4</span>
+                                     <span className="text-zinc-400 text-[13px] font-medium tracking-tight">{childAge < 4 ? `Corpus at age 4` : `No SIP A corpus`}</span>
                                      <span className="text-white text-[15px] font-bold">{formatINRFull(schoolModel.corpusAtAge4)}</span>
                                   </div>
                                   <div className="flex justify-between items-start py-2 border-b border-white/[0.04]">
                                      <div className="flex flex-col">
                                         <span className="text-zinc-400 text-[13px] font-medium tracking-tight">From Corpus</span>
                                         <span className="text-[10px] text-zinc-500 italic mt-0.5 leading-tight">
-                                          (Built from your SIP A - {formatINR(schoolModel.effectiveSipA)}/month × {Math.max(0, 4 - childAge)} years, growing at {sipReturn}% while paying fees)
+                                           {childAge < 4
+                                             ? `(Built from your SIP A - ${formatINR(schoolModel.effectiveSipA)}/month × ${4 - childAge} years, growing at ${sipReturn}% while paying fees)`
+                                             : `(No SIP A — child is already ${childAge} years old)`}
                                         </span>
                                      </div>
                                      <span className="text-white text-[15px] font-bold">{formatINRFull(schoolModel.totalFromCorpus)}</span>
@@ -1373,7 +1447,7 @@ ${JSON.stringify(context)}`;
                                   <div className="flex justify-between items-start py-2">
                                      <div className="flex flex-col">
                                         <span className="text-zinc-400 text-[13px] font-medium tracking-tight">From Income</span>
-                                        <span className="text-[10px] text-zinc-500 italic mt-0.5">(from years 4 to 17)</span>
+                                        <span className="text-[10px] text-zinc-500 italic mt-0.5">(age {Math.max(4, childAge)} to 17)</span>
                                      </div>
                                      <span className="text-white text-[15px] font-bold">{formatINRFull(schoolModel.totalFromIncome)}</span>
                                   </div>
@@ -1383,13 +1457,13 @@ ${JSON.stringify(context)}`;
                                <div className="space-y-1">
                                   <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.2em] mb-2">SIP A — School Support Fund</p>
                                   <p className="text-amber-500 text-[32px] font-black tracking-tight">{formatINRFull(schoolModel.effectiveSipA)}</p>
-                                  <p className="text-zinc-400 text-[13px] font-medium tracking-tight">Invest age {childAge}–4</p>
+                                  <p className="text-zinc-400 text-[13px] font-medium tracking-tight">Invest age {childAge}–4 only</p>
                                </div>
 
                                <div className="space-y-1">
                                   <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.2em] mb-2">average monthly salary commitment</p>
                                   <p className="text-[#f59e0b] text-[32px] font-black tracking-tight">{formatINRFull(Math.round(schoolModel.totalFromIncome / (14 * 12)))}</p>
-                                  <p className="text-zinc-400 text-[13px] font-medium tracking-tight">Age 4–17 burden</p>
+                                  <p className="text-zinc-400 text-[13px] font-medium tracking-tight">Age {Math.max(4, childAge)}–17 burden</p>
                                </div>
                                <div className="bg-amber-500/[0.04] border border-amber-500/15 rounded-[12px] p-4 text-left w-full">
                                   <p className="text-[#a1a1aa] text-[12px] leading-relaxed">
@@ -1460,7 +1534,7 @@ ${JSON.stringify(context)}`;
                                     <div className="space-y-1">
                                       <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Total Schooling Budget</p>
                                       <p className="text-white text-xl font-black">{formatINRFull(schoolModel.totalSchoolFees)}</p>
-                                      <p className="text-zinc-500 text-[11px] leading-relaxed">Arrived by summing year-wise fees from age 4 to 17, with <span className="text-amber-500 font-bold">{educationInflation}%</span> annual hike.</p>
+                                      <p className="text-zinc-500 text-[11px] leading-relaxed">Arrived by summing year-wise fees from age {Math.max(4, childAge)} to 17, with <span className="text-amber-500 font-bold">{educationInflation}%</span> annual hike.</p>
                                     </div>
                                     <div className="space-y-1">
                                       <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Net Support Strategy</p>
@@ -1469,7 +1543,7 @@ ${JSON.stringify(context)}`;
                                         <span className="text-[#10b981] font-bold">{formatINRFull(schoolModel.totalFromCorpus)}</span>
                                       </div>
                                       <div className="flex justify-between items-center py-1">
-                                        <span className="text-zinc-400 text-[12px]">Paid from Monthly Income (Age 4–17)</span>
+                                        <span className="text-zinc-400 text-[12px]">Paid from Monthly Income (Age {Math.max(4, childAge)}–17)</span>
                                         <span className="text-[#f59e0b] font-bold">{formatINRFull(schoolModel.totalFromIncome)}</span>
                                       </div>
                                     </div>
@@ -1477,11 +1551,11 @@ ${JSON.stringify(context)}`;
 
                                   <div className="p-5 bg-white/5 rounded-xl space-y-2">
                                     <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">average monthly salary commitment</p>
-                                    <p className="text-white text-2xl font-bold">{formatINR(Math.round(schoolModel.totalFromIncome / (14 * 12)))}/month</p>
+                                    <p className="text-white text-2xl font-bold">{formatINR(schoolModel.avgMonthlyFromIncome)}/month</p>
                                     <div className="flex flex-col space-y-1">
                                       <p className="text-zinc-400 text-sm">How we got this:</p>
                                       <p className="text-zinc-400 text-sm">
-                                        {formatINRFull(schoolModel.totalFromIncome)} (total from income) ÷ 168 months (14 years × 12) = {formatINR(Math.round(schoolModel.totalFromIncome / (14 * 12)))}/month
+                                        {formatINRFull(schoolModel.totalFromIncome)} (total from income) ÷ {(17 - Math.max(4, childAge) + 1) * 12} months ({17 - Math.max(4, childAge) + 1} years × 12) = {formatINR(schoolModel.avgMonthlyFromIncome)}/month
                                       </p>
                                       <p className="text-zinc-400 text-sm italic mt-1">This is your average monthly salary commitment for school fees.</p>
                                     </div>
@@ -1513,8 +1587,8 @@ ${JSON.stringify(context)}`;
                 {step === 3 && (
                   <div className="space-y-10">
                      <div className="flex flex-wrap gap-2 mb-4">
-                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">Age: {childAge}, {higherEdType === 'studyAbroad' ? 'Study Abroad' : 'Domestic'}</button>
-                        <button onClick={() => setStep(2)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight">SIP A {formatINR(sipA)}/mo</button>
+                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">Age: {agePill}, {higherEdType === 'studyAbroad' ? 'Study Abroad' : 'Domestic'}</button>
+                        <button onClick={() => setStep(2)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight">{sipAPill}</button>
                      </div>
 
                     <div className="space-y-1.5">
@@ -1558,11 +1632,11 @@ ${JSON.stringify(context)}`;
                                               <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Total College Fees</span>
                                               <span className="text-white text-[15px] font-bold">{formatINRFull(collegeModel.totalCollegeFees)}</span>
                                             </div>
-                                            <span className="text-[10px] text-zinc-500 italic mt-0.5">(From birth untill higher education is completed by 21 years)</span>
+                                            <span className="text-[10px] text-zinc-500 italic mt-0.5">(inflated from today until higher education is completed by 21 years)</span>
                                          </div>
                                          <div className="flex justify-between items-baseline py-2 border-b border-white/[0.04]">
                                             <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Corpus at Age {collegeModel.startAge}</span>
-                                            <span className="text-white text-[15px] font-bold">{formatINRFull(collegeModel.corpusAt18)}</span>
+                                            <span className="text-white text-[15px] font-bold">{formatINRFull(collegeModel.corpusAtX)}</span>
                                          </div>
                                          <div className="flex flex-col py-2 border-b border-white/[0.04]">
                                             <div className="flex justify-between items-baseline">
@@ -1582,7 +1656,7 @@ ${JSON.stringify(context)}`;
                                       <div className="space-y-1">
                                          <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.2em] mb-2">SIP B — College Fund</p>
                                          <p className="text-[#10b981] text-[32px] font-black tracking-tight">{formatINRFull(collegeModel.sipB)}</p>
-                                         <p className="text-zinc-400 text-[13px] font-medium">Invest age {childAge}–{collegeModel.endAge}</p>
+                                         <p className="text-zinc-400 text-[13px] font-medium tracking-tight">Invest age {childAge}–21 ({21 - childAge} years)</p>
                                       </div>
 
                                       <div className="space-y-1">
@@ -1664,14 +1738,14 @@ ${JSON.stringify(context)}`;
                                             <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Estimated College Fees (Total)</p>
                                             <p className="text-white text-xl font-black">{formatINRFull(collegeModel.totalCollegeFees)}</p>
                                             <p className="text-zinc-500 text-[11px] leading-relaxed">
-                                              Based on current cost of <span className="text-emerald-500 font-bold">{formatINR(HIGHER_ED_FEES[higherEdType])}</span>, inflated by <span className="text-emerald-500 font-bold">{educationInflation}%</span> annually for {18 - childAge} years.
+                                             Based on current cost of <span className="text-emerald-500 font-bold">{formatINR(HIGHER_ED_FEES[higherEdType])}</span>, inflated by <span className="text-emerald-500 font-bold">{educationInflation}%</span> annually for {18 - childAge} years ({18 - childAge} yrs from today).
                                             </p>
                                           </div>
                                           <div className="space-y-1">
                                             <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Target Corpus Plan</p>
                                             <div className="flex justify-between items-center py-1 border-b border-white/5">
-                                              <span className="text-zinc-400 text-[12px]">Accumulated by Age 18</span>
-                                              <span className="text-[#10b981] font-bold">{formatINRFull(collegeModel.corpusAt18)}</span>
+                                              <span className="text-zinc-400 text-[12px]">Accumulated by Age 18 (after {18 - childAge} years of SIP B)</span>
+                                              <span className="text-[#10b981] font-bold">{formatINRFull(collegeModel.corpusAtX)}</span>
                                             </div>
                                             <div className="flex justify-between items-center py-1 border-b border-white/5">
                                               <span className="text-zinc-400 text-[12px]">Harvesting Growth (Returns)</span>
@@ -1724,9 +1798,9 @@ ${JSON.stringify(context)}`;
                 {step === 4 && (
                   <div className="space-y-10">
                     <div className="flex flex-wrap gap-2 mb-4">
-                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight">Age: {childAge}</button>
-                        <button onClick={() => setStep(2)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight">SIP A {formatINR(sipA)}</button>
-                        <button onClick={() => setStep(3)} className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight">SIP B {formatINR(collegeModel.sipB)}</button>
+                        <button onClick={() => setStep(1)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">Age: {agePill}</button>
+                        <button onClick={() => setStep(2)} className="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">{sipAPill}</button>
+                        <button onClick={() => setStep(3)} className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight uppercase">SIP B {formatINR(collegeModel.sipB)}/mo</button>
                      </div>
 
                     <div className="space-y-1.5 flex justify-between items-center">
@@ -1762,11 +1836,11 @@ ${JSON.stringify(context)}`;
                                  <p className="text-zinc-500 text-xs uppercase font-bold tracking-[0.2em]">Growth Plan</p>
                                  <div className="space-y-4 pr-0 md:pr-8">
                                     <div className="flex justify-between items-baseline py-2 border-b border-white/[0.04]">
-                                       <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Marriage Age Goal</span>
-                                       <span className="text-white text-[15px] font-bold">{weddingAge} Years</span>
+                                       <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Investment Duration</span>
+                                       <span className="text-white text-[15px] font-bold">Age {childAge}–{weddingAge} ({weddingAge - childAge} Years)</span>
                                     </div>
                                     <div className="flex justify-between items-baseline py-2">
-                                       <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Future Cost</span>
+                                       <span className="text-zinc-400 text-[13px] font-medium tracking-tight">Future Cost (at Age {weddingAge})</span>
                                        <span className="text-purple-500 text-[15px] font-bold">{formatINRFull(weddingModel.costFuture)}</span>
                                     </div>
                                  </div>
