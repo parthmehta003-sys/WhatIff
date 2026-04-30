@@ -43,7 +43,7 @@ export default function WhatiffInsights({
 }: WhatiffInsightsProps) {
   const theme = useContext(ThemeContext);
   const isDark = theme === 'dark';
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(true);
 
   const generateWhatiffInsights = () => {
     if (propsInsights) return propsInsights;
@@ -158,55 +158,54 @@ export default function WhatiffInsights({
   return (
     <div className="space-y-6">
       <div className={cn(
-        "glass-card p-6 border-l-4 border-emerald-500 transition-colors duration-300",
-        isDark ? "bg-white/5" : "bg-white border-zinc-200 shadow-sm"
+        "rounded-2xl border transition-all duration-300 overflow-hidden",
+        isDark ? "bg-[#0a0a0a] border-white/10" : "bg-white border-zinc-200 shadow-sm"
       )}>
-        <button 
-          onClick={() => setIsInsightsOpen(!isInsightsOpen)}
-          className="w-full flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-500" />
-            <h3 className={cn("text-lg font-bold transition-colors duration-300", isDark ? "text-white" : "text-black")}>Whatiff Insights</h3>
+        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+              <Sparkles className="w-4 h-4 text-emerald-500" />
+            </div>
+            <h3 className={cn("text-base font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Whatiff Insights</h3>
           </div>
-          <div className={cn("flex items-center gap-2 transition-colors duration-300", isDark ? "text-zinc-500 group-hover:text-white" : "text-zinc-500 group-hover:text-black")}>
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {isInsightsOpen ? 'Hide' : 'View'} Insights
-            </span>
-            {isInsightsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </button>
+          <button 
+            onClick={() => setIsInsightsOpen(!isInsightsOpen)}
+            className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors", isDark ? "text-zinc-400 hover:text-white hover:bg-white/5" : "text-zinc-500 hover:text-black hover:bg-black/5")}
+          >
+            {isInsightsOpen ? 'Hide Insights' : 'View Insights'}
+            {isInsightsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+        </div>
         
         <AnimatePresence>
           {isInsightsOpen && (
             <motion.div
-              initial={{ height: 0, opacity: 0, marginTop: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginTop: 24 }}
-              exit={{ height: 0, opacity: 0, marginTop: 0 }}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="overflow-hidden"
             >
-              <div className="space-y-4">
+              <div className="p-6 space-y-5">
                 {insights.map((insight, index) => (
-                  <div key={index} className="flex gap-3">
-                    {!hideBullets && <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
-                    <p className={cn("leading-relaxed transition-colors duration-300", isDark ? "text-zinc-300" : "text-zinc-700")}>{renderBold(insight)}</p>
+                  <div key={index} className="flex gap-4 items-start">
+                    {!hideBullets && <div className="mt-2 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
+                    <p className={cn("text-sm leading-relaxed font-medium", isDark ? "text-zinc-400" : "text-zinc-600")}>{renderBold(insight)}</p>
                   </div>
                 ))}
-              </div>
 
-              {onAskAI && (
-                <button
-                  onClick={() => onAskAI({ ...results, calculatorType }, chips, systemPrompt)}
-                  className={cn(
-                    "mt-8 w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
-                    isDark ? "bg-white text-zinc-950 hover:bg-zinc-200" : "bg-black text-white hover:bg-zinc-800"
-                  )}
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  Ask anything about these numbers
-                </button>
-              )}
+                {onAskAI && (
+                  <button
+                    onClick={() => onAskAI({ ...results, calculatorType }, chips, systemPrompt)}
+                    className={cn(
+                      "mt-2 w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-[0.98] group",
+                      isDark ? "bg-white text-black hover:bg-zinc-100" : "bg-zinc-900 text-white hover:bg-black"
+                    )}
+                  >
+                    <MessageSquare className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    <span className="text-sm">Ask anything about these numbers</span>
+                  </button>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

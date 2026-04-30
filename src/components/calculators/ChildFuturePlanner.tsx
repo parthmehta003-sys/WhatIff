@@ -558,6 +558,47 @@ export default function ChildFuturePlanner({ onBack, onNavigate, onAskAI }: any)
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [questionCount, setQuestionCount] = useState(0);
+  const insights = useMemo(() => [
+    `School fees are primarily an income commitment, your SIP A offsets **${schoolModel.sipBurdenReduction.toFixed(0)}%** of the burden.`,
+    `College and wedding are fully pre-funded via SIP B and C, ensuring zero impact on your future monthly cashflow.`,
+    `Your peak investment period is Age **${childAge} to 4**, where the combined monthly SIP is **${formatINR(schoolModel.effectiveSipA + collegeModel.sipB + weddingModel.sipC)}**.`,
+  ], [schoolModel, collegeModel, weddingModel, childAge]);
+
+  const aiChips = useMemo(() => {
+    // Phase-specific suggested questions for the AI assistant
+    if (hasSentFirstMessage) return [];
+    
+    if (step === 2) return [
+      "Why does the corpus peak at age 8 and then decline?",
+      "What happens if I increase my SIP from ₹5,000 to ₹10,000?",
+      "At what SIP amount would the corpus cover 50% of school fees?",
+      "Why is my school fee at age 17 more than 5x the fee today?"
+    ];
+    if (step === 3) return [
+      "Why does SIP B continue during college years instead of stopping at 18?",
+      "How is the college fee at age 18 so much higher than today's fee?",
+      "What does corpus at age 18 mean and why is it less than total college fees?",
+      "How many months of SIP B does it take to fund just year 1 of college?"
+    ];
+    if (step === 4) return [
+      "Why is general inflation used for wedding instead of education inflation?",
+      "How does the wedding corpus reach exactly the right amount at age 27?",
+      "What happens to the corpus if the wedding happens 3 years earlier than planned?",
+      "Why does wedding SIP run from birth instead of starting later?"
+    ];
+    if (step === 5) return [
+      "Why is age 0 to 4 the most expensive phase financially?",
+      "What does total invested vs total funded tell me?",
+      "If I can only start one SIP today which one has the biggest consequence if delayed?",
+      "How does compounding explain the gap between what I invest and what gets funded?"
+    ];
+    return [
+      "Tell me more about education inflation", 
+      "How are these milestone fees calculated?", 
+      "Why do city/lifestyle matter for the base living costs?"
+    ];
+  }, [step, hasSentFirstMessage]);
+
   const sessionId = useMemo(() => Math.random().toString(36).substring(2, 9), []);
   const MAX_QUESTIONS = 10;
 
@@ -614,40 +655,6 @@ ${JSON.stringify(context)}`;
     } finally { setIsChatLoading(false); }
   };
 
-  const aiChips = useMemo(() => {
-    // Phase-specific suggested questions for the AI assistant
-    if (hasSentFirstMessage) return [];
-    
-    if (step === 2) return [
-      "Why does the corpus peak at age 8 and then decline?",
-      "What happens if I increase my SIP from ₹5,000 to ₹10,000?",
-      "At what SIP amount would the corpus cover 50% of school fees?",
-      "Why is my school fee at age 17 more than 5x the fee today?"
-    ];
-    if (step === 3) return [
-      "Why does SIP B continue during college years instead of stopping at 18?",
-      "How is the college fee at age 18 so much higher than today's fee?",
-      "What does corpus at age 18 mean and why is it less than total college fees?",
-      "How many months of SIP B does it take to fund just year 1 of college?"
-    ];
-    if (step === 4) return [
-      "Why is general inflation used for wedding instead of education inflation?",
-      "How does the wedding corpus reach exactly the right amount at age 27?",
-      "What happens to the corpus if the wedding happens 3 years earlier than planned?",
-      "Why does wedding SIP run from birth instead of starting later?"
-    ];
-    if (step === 5) return [
-      "Why is age 0 to 4 the most expensive phase financially?",
-      "What does total invested vs total funded tell me?",
-      "If I can only start one SIP today which one has the biggest consequence if delayed?",
-      "How does compounding explain the gap between what I invest and what gets funded?"
-    ];
-    return [
-      "Tell me more about education inflation", 
-      "How are these milestone fees calculated?", 
-      "Why do city/lifestyle matter for the base living costs?"
-    ];
-  }, [step, hasSentFirstMessage]);
 
   const agePill = childAge === 0 ? 'Newborn'
     : childAge === 1 ? '1 year old'
@@ -655,11 +662,6 @@ ${JSON.stringify(context)}`;
     : childAge === 3 ? '3 years old'
     : `${childAge} years old`;
 
-  const insights = useMemo(() => [
-    `School fees are primarily an income commitment, your SIP A offsets **${schoolModel.sipBurdenReduction.toFixed(0)}%** of the burden.`,
-    `College and wedding are fully pre-funded via SIP B and C, ensuring zero impact on your future monthly cashflow.`,
-    `Your peak investment period is Age **${childAge} to 4**, where the combined monthly SIP is **${formatINR(schoolModel.effectiveSipA + collegeModel.sipB + weddingModel.sipC)}**.`,
-  ], [schoolModel, collegeModel, weddingModel, childAge]);
 
   const sipAPill = schoolModel.effectiveSipA > 0
     ? `SIP A ₹${formatINR(schoolModel.effectiveSipA)}/mo`
@@ -720,7 +722,7 @@ ${JSON.stringify(context)}`;
               {/* SIP A - 0 to 4 */}
               {childAge < 4 && (
                 <div className="space-y-2">
-                                         <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                  <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     <span>SIP A (School)</span>
                     <span>Age {childAge} - 4</span>
                   </div>
@@ -829,13 +831,13 @@ ${JSON.stringify(context)}`;
               </div>
               <div className="space-y-4">
                 <div className="flex flex-col">
-                  <h3 className="text-white text-sm font-bold">Aggregate Monthly SIP C</h3>
-                  <p className="text-[28px] font-black text-purple-500 tracking-tight leading-none mt-1">{formatINRFull(familySummary.sipC)}/mo</p>
+                  <h3 className="text-white text-sm font-bold">Future Cost (at Age {weddingAge})</h3>
+                  <p className="text-[28px] font-black text-purple-500 tracking-tight leading-none mt-1">{formatINRFull(weddingModel.sipC)}/mo</p>
                 </div>
                 
                 <div className="space-y-3 pt-4 border-t border-white/5">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-zinc-500 text-[12px]">Cumulative Future Cost</span>
+                    <span className="text-zinc-500 text-[12px]">Age {childAge}–{weddingAge} ({weddingAge - childAge} Years)</span>
                     <span className="text-white font-bold text-[12px]">{formatCrores(familySummary.wedding)}</span>
                   </div>
                 </div>
@@ -1312,8 +1314,6 @@ ${JSON.stringify(context)}`;
                                   color: 'white', fontSize: 14, fontWeight: 700,
                                   width: 70, textAlign: 'center', outline: 'none'
                                 }}
-                                onFocus={e => e.target.style.border = '1px solid rgba(245,158,11,0.4)'}
-                                onBlur={e => e.target.style.border = '1px solid rgba(255,255,255,0.08)'}
                               />
                             </div>
                             <input
@@ -1324,12 +1324,11 @@ ${JSON.stringify(context)}`;
                                 setChildExactAge(val)
                                 setChildAge(val)
                               }}
-                              style={{ width: '100%', accentColor: '#f59e0b' }}
+                              style={{ appearance: 'none', width: '100%', height: 6, background: '#27272a', borderRadius: 3, accentColor: '#f59e0b' }}
                             />
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                              <span style={{ fontSize: 10, color: '#3f3f46' }}>4 years</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>{childExactAge} years old</span>
-                              <span style={{ fontSize: 10, color: '#3f3f46' }}>17 years</span>
+                              <span style={{ fontSize: 10, color: '#3f3f46', fontWeight: 700 }}>4</span>
+                              <span style={{ fontSize: 10, color: '#3f3f46', fontWeight: 700 }}>17</span>
                             </div>
                           </div>
                         )}

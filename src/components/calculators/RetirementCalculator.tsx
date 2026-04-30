@@ -408,7 +408,7 @@ export default function RetirementCalculator({ onBack, onNavigate, onAskAI }: Re
             label="Current Monthly SIP"
             value={currentSIP}
             min={0}
-            max={200000}
+            max={1000000}
             step={1000}
             onChange={setCurrentSIP}
             formatDisplay={(v) => formatCurrency(v)}

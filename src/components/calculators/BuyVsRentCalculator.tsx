@@ -329,7 +329,7 @@ export default function BuyVsRentCalculator({ onBack, initialData, onAskAI }: Bu
               label="Current Monthly Rent"
               value={currentRent}
               min={5000}
-              max={200000}
+              max={1000000}
               step={1000}
               onChange={setCurrentRent}
               formatDisplay={(v) => formatCurrency(v)}
