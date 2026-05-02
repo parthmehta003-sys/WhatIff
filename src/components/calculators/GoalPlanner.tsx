@@ -1095,82 +1095,84 @@ ${Object.entries(contextObject).map(([key, val]) => `- ${key}: ${val}`).join('\n
       })()}
 
       {/* How this is calculated - Collapsible Explainer */}
-      <div className="mb-10 border-t border-white/[0.06] mt-4">
-        <button 
-          onClick={() => setShowCalculationExplainer(!showCalculationExplainer)}
-          className={cn(
-            "w-full flex justify-between items-center py-4 text-[13px] font-bold uppercase tracking-widest transition-colors duration-200",
-            isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-900"
-          )}
-        >
-          How is this calculated?
-          <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", showCalculationExplainer ? "rotate-180" : "")} />
-        </button>
+      {(inflationRate > 0 || accountForLTCG) && (
+        <div className="mb-10 border-t border-white/[0.06] mt-4">
+          <button 
+            onClick={() => setShowCalculationExplainer(!showCalculationExplainer)}
+            className={cn(
+              "w-full flex justify-between items-center py-4 text-[13px] font-bold uppercase tracking-widest transition-colors duration-200",
+              isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-900"
+            )}
+          >
+            How is this calculated?
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", showCalculationExplainer ? "rotate-180" : "")} />
+          </button>
 
-        <motion.div
-          initial={false}
-          animate={{ 
-            height: showCalculationExplainer ? 'auto' : 0,
-            opacity: showCalculationExplainer ? 1 : 0,
-            marginTop: showCalculationExplainer ? 8 : 0
-          }}
-          className="overflow-hidden"
-          transition={{ duration: 0.4, ease: "easeInOut" }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10 p-6 rounded-2xl bg-zinc-900/10 border border-white/5">
-            {/* Block A: LTCG TAX */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">A — LTCG TAX</span>
-                <span className="text-sm font-bold text-red-500">{formatCurrency(targetAmount - postTaxOnStatedGoal)}</span>
+          <motion.div
+            initial={false}
+            animate={{ 
+              height: showCalculationExplainer ? 'auto' : 0,
+              opacity: showCalculationExplainer ? 1 : 0,
+              marginTop: showCalculationExplainer ? 8 : 0
+            }}
+            className="overflow-hidden"
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10 p-6 rounded-2xl bg-zinc-900/10 border border-white/5">
+              {/* Block A: LTCG TAX */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">A — LTCG TAX</span>
+                  <span className="text-sm font-bold text-red-500">{formatCurrency(targetAmount - postTaxOnStatedGoal)}</span>
+                </div>
+                <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                  <p>Total invested = {formatCurrency(monthlySIP)} × 12 × {years} years = {formatCurrency(monthlySIP * 12 * years)}</p>
+                  <p>Gains = {formatCurrency(targetAmount)} − {formatCurrency(monthlySIP * 12 * years)} = {formatCurrency(targetAmount - (monthlySIP * 12 * years))}</p>
+                  <p>Taxable gains = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years)))} − ₹1,25,000 exemption = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years) - 125000))}</p>
+                  <p>LTCG tax = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years) - 125000))} × 12.5% = {formatCurrency(targetAmount - postTaxOnStatedGoal)}</p>
+                </div>
               </div>
-              <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
-                <p>Total invested = {formatCurrency(monthlySIP)} × 12 × {years} years = {formatCurrency(monthlySIP * 12 * years)}</p>
-                <p>Gains = {formatCurrency(targetAmount)} − {formatCurrency(monthlySIP * 12 * years)} = {formatCurrency(targetAmount - (monthlySIP * 12 * years))}</p>
-                <p>Taxable gains = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years)))} − ₹1,25,000 exemption = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years) - 125000))}</p>
-                <p>LTCG tax = {formatCurrency(Math.max(0, targetAmount - (monthlySIP * 12 * years) - 125000))} × 12.5% = {formatCurrency(targetAmount - postTaxOnStatedGoal)}</p>
+
+              {/* Block B: INFLATION EROSION */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">B — INFLATION EROSION</span>
+                  <span className="text-sm font-bold text-red-500">{formatCurrency(postTaxOnStatedGoal - realValuePostTax)}</span>
+                </div>
+                <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                  <p>Real value = {formatCurrency(postTaxOnStatedGoal)} ÷ (1 + {inflationRate/100})^{years} = {formatCurrency(realValuePostTax)}</p>
+                  <p>Erosion = {formatCurrency(postTaxOnStatedGoal)} − {formatCurrency(realValuePostTax)} = {formatCurrency(postTaxOnStatedGoal - realValuePostTax)}</p>
+                </div>
+              </div>
+
+              {/* Block C: INFLATION GROSS-UP */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">C — INFLATION GROSS-UP</span>
+                  <span className="text-sm font-bold text-amber-500">{formatCurrency(inflationAdjustedGoal - targetAmount)}</span>
+                </div>
+                <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                  <p>Inflation-adj. target = {formatCurrency(targetAmount)} × (1 + {inflationRate/100})^{years} = {formatCurrency(inflationAdjustedGoal)}</p>
+                  <p>Gross-up added = {formatCurrency(inflationAdjustedGoal)} − {formatCurrency(targetAmount)} = {formatCurrency(inflationAdjustedGoal - targetAmount)}</p>
+                </div>
+              </div>
+
+              {/* Block D: LTCG GROSS-UP */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">D — LTCG GROSS-UP</span>
+                  <span className="text-sm font-bold text-emerald-500">{formatCurrency(trueTargetGross - inflationAdjustedGoal)}</span>
+                </div>
+                <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                  <p>To net {formatCurrency(inflationAdjustedGoal)} after 12.5% tax on gains:</p>
+                  <p>Gross-up = {formatCurrency(trueTargetGross)} − {formatCurrency(inflationAdjustedGoal)} ≈ {formatCurrency(trueTargetGross - inflationAdjustedGoal)}</p>
+                  <p>Gross corpus = {formatCurrency(inflationAdjustedGoal)} + {formatCurrency(trueTargetGross - inflationAdjustedGoal)} = {formatCurrency(trueTargetGross)}</p>
+                </div>
               </div>
             </div>
-
-            {/* Block B: INFLATION EROSION */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">B — INFLATION EROSION</span>
-                <span className="text-sm font-bold text-red-500">{formatCurrency(postTaxOnStatedGoal - realValuePostTax)}</span>
-              </div>
-              <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
-                <p>Real value = {formatCurrency(postTaxOnStatedGoal)} ÷ (1 + {inflationRate/100})^{years} = {formatCurrency(realValuePostTax)}</p>
-                <p>Erosion = {formatCurrency(postTaxOnStatedGoal)} − {formatCurrency(realValuePostTax)} = {formatCurrency(postTaxOnStatedGoal - realValuePostTax)}</p>
-              </div>
-            </div>
-
-            {/* Block C: INFLATION GROSS-UP */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">C — INFLATION GROSS-UP</span>
-                <span className="text-sm font-bold text-amber-500">{formatCurrency(inflationAdjustedGoal - targetAmount)}</span>
-              </div>
-              <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
-                <p>Inflation-adj. target = {formatCurrency(targetAmount)} × (1 + {inflationRate/100})^{years} = {formatCurrency(inflationAdjustedGoal)}</p>
-                <p>Gross-up added = {formatCurrency(inflationAdjustedGoal)} − {formatCurrency(targetAmount)} = {formatCurrency(inflationAdjustedGoal - targetAmount)}</p>
-              </div>
-            </div>
-
-            {/* Block D: LTCG GROSS-UP */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">D — LTCG GROSS-UP</span>
-                <span className="text-sm font-bold text-emerald-500">{formatCurrency(trueTargetGross - inflationAdjustedGoal)}</span>
-              </div>
-              <div className="space-y-2 text-[11px] text-zinc-400 leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
-                <p>To net {formatCurrency(inflationAdjustedGoal)} after 12.5% tax on gains:</p>
-                <p>Gross-up = {formatCurrency(trueTargetGross)} − {formatCurrency(inflationAdjustedGoal)} ≈ {formatCurrency(trueTargetGross - inflationAdjustedGoal)}</p>
-                <p>Gross corpus = {formatCurrency(inflationAdjustedGoal)} + {formatCurrency(trueTargetGross - inflationAdjustedGoal)} = {formatCurrency(trueTargetGross)}</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Banner Section - Removed as per instructions */}

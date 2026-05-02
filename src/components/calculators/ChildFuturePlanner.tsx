@@ -142,7 +142,7 @@ const LOCAL_STORAGE_KEY = 'whatiff_child_plans';
 
 // ==================== LOCAL UI COMPONENTS ====================
 
-const HybridSlider = ({ label, value, min, max, step, onChange, formatDisplay, accentColor = "amber" }: any) => {
+const HybridSlider = ({ label, value, min, max, step, onChange, formatDisplay, accentColor = "amber", tooltip, note }: any) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value.toString());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -171,7 +171,10 @@ const HybridSlider = ({ label, value, min, max, step, onChange, formatDisplay, a
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center group/label">
-        <label className="text-zinc-400 text-[12px] font-bold uppercase tracking-widest">{label}</label>
+        <label className="text-zinc-400 text-[12px] font-bold uppercase tracking-widest flex items-center">
+          {label}
+          {tooltip}
+        </label>
         
         <div className="relative min-w-[80px] flex justify-end">
           {isEditing ? (
@@ -224,6 +227,12 @@ const HybridSlider = ({ label, value, min, max, step, onChange, formatDisplay, a
         </div>
       </div>
 
+      {note && (
+        <p className="text-zinc-500 text-[11px] leading-relaxed">
+          {note}
+        </p>
+      )}
+
       <style>{`
         input[type=range]::-webkit-slider-thumb {
           -webkit-appearance: none;
@@ -243,6 +252,87 @@ const HybridSlider = ({ label, value, min, max, step, onChange, formatDisplay, a
           transform: scale(0.95);
         }
       `}</style>
+    </div>
+  );
+};
+
+const EduTooltip = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef<any>(null);
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsVisible(!isVisible);
+    if (!isVisible) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setIsVisible(false), 6000);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = () => setIsVisible(false);
+    if (isVisible) {
+      window.addEventListener('click', handleClickOutside);
+    }
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [isVisible]);
+
+  return (
+    <div className="relative inline-block ml-1.5 leading-none">
+      <span 
+        className="text-[#52525b] hover:text-[#a1a1aa] cursor-pointer text-[12px] transition-colors select-none"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onClick={toggle}
+      >
+        ❓
+      </span>
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3 w-[280px] bg-[#18181b] border border-white/10 rounded-[10px] p-[12px_14px] shadow-[0_8px_24px_rgba(0,0,0,0.4)] max-md:top-full max-md:bottom-auto max-md:mt-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 className="text-white font-semibold text-[12px] mb-2 leading-tight">
+              India's education inflation: what the data says
+            </h4>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-[#52525b] text-[11px] leading-tight">Cpi education index (mospi, 2024):</span>
+                <span className="text-[#f59e0b] text-[11px] font-bold whitespace-nowrap">7.2% per year</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-[#52525b] text-[11px] leading-tight">Private school fees (unregulated):</span>
+                <span className="text-[#f59e0b] text-[11px] font-bold whitespace-nowrap">10–12% per year</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-[#52525b] text-[11px] leading-tight">Metro premium schools:</span>
+                <span className="text-[#f59e0b] text-[11px] font-bold whitespace-nowrap">10–15% per year</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-[#52525b] text-[11px] leading-tight">Iim mba fees (2007 to 2021):</span>
+                <span className="text-[#f59e0b] text-[11px] font-bold whitespace-nowrap">13.6% per year CAGR</span>
+              </div>
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-white/[0.08]">
+              <p className="text-white text-[11px] font-medium leading-[1.7]">
+                WhatIff default: 10% — conservative midpoint for private school and college planning.
+              </p>
+            </div>
+
+            <div className="mt-2">
+              <p className="text-[#3f3f46] text-[10px] leading-[1.7]">
+                Sources: Ministry of Statistics & Programme Implementation (MoSPI) CPI data; CRISIL K-12 education sector report FY25; Kotak MF Education Inflation report 2024; EquitiesIndia.com
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1367,8 +1457,15 @@ ${JSON.stringify(context)}`;
 
                       <div className="border-t border-white/5 pt-10">
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                            <HybridSlider label="Edu Inflation" value={educationInflation} min={5} max={15} step={1} onChange={setEducationInflation} formatDisplay={v => `${v}%`} />
-                            <HybridSlider label="Gen Inflation" value={generalInflation} min={2} max={10} step={1} onChange={setGeneralInflation} formatDisplay={v => `${v}%`} />
+                            <HybridSlider label="Education Inflation" 
+                               value={educationInflation} 
+                               min={5} 
+                               max={15} 
+                               step={1} 
+                               onChange={setEducationInflation} 
+                               formatDisplay={v => `${v}%`} 
+                               tooltip={<EduTooltip />} />
+                            <HybridSlider label="General Inflation" value={generalInflation} min={2} max={10} step={1} onChange={setGeneralInflation} formatDisplay={v => `${v}%`} />
                             <HybridSlider label="Expected SIP return" value={sipReturn} min={8} max={18} step={0.5} onChange={setSipReturn} formatDisplay={v => `${v}%`} />
                          </div>
                       </div>
