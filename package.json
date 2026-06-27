@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "NODE_ENV=production rm -rf dist && NODE_ENV=production vite build && NODE_ENV=production vite build --ssr src/entry-server.tsx --emptyOutDir false && NODE_ENV=production node scripts/prerender.js",
+    "build": "NODE_ENV=production rm -rf dist && NODE_ENV=production vite build && NODE_ENV=production vite build --ssr src/entry-server.tsx --emptyOutDir false && NODE_ENV=production node scripts/prerender.js && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start": "NODE_ENV=production tsx server.ts"
+    "start": "NODE_ENV=production node dist/server.cjs"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
